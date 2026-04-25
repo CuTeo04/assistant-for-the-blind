@@ -1,0 +1,66 @@
+# Python cache and artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+unidepth_env/
+
+# Build, test, coverage
+build/
+dist/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Jupyter and local editor files
+.ipynb_checkpoints/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and runtime files
+*.log
+*.tmp
+*.temp
+
+# Model weights and checkpoints (large binary files)
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Local media or generated outputs
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Depth Anything V2 (vendor code and generated artifacts)
+Depth-Anything-V2/
+Depth-Anything-V2/.git/
+Depth-Anything-V2/**/__pycache__/
+Depth-Anything-V2/**/.pytest_cache/
+Depth-Anything-V2/**/.mypy_cache/
+Depth-Anything-V2/**/.ruff_cache/
+Depth-Anything-V2/**/.ipynb_checkpoints/
+Depth-Anything-V2/**/runs/
+Depth-Anything-V2/**/outputs/
+Depth-Anything-V2/metric_depth/dataset/**/data/
+Depth-Anything-V2/metric_depth/dataset/**/cache/
+
+# OS files
+.DS_Store
+Thumbs.db

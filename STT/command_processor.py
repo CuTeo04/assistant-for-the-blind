@@ -1,0 +1,200 @@
+import time
+
+import re
+
+from openai import OpenAI
+
+from .config import voice_config as cfg
+from prompt.prompts import STT_CLASSIFY_SYSTEM_PROMPT
+
+# Keep local name for minimal changes in call sites.
+LLM_SYSTEM_PROMPT = STT_CLASSIFY_SYSTEM_PROMPT
+
+
+def init_client(api_key: str, base_url: str):
+    return OpenAI(api_key=api_key, base_url=base_url)
+
+
+def transcribe_audio(client, audio_path: str, model: str, language: str, prompt: str):
+    with open(audio_path, "rb") as f:
+        audio_data = f.read()
+
+    start_time = time.time()
+    transcript = client.audio.transcriptions.create(
+        file=(audio_path, audio_data),
+        model=model,
+        language=language,
+        prompt=prompt,
+        response_format="text",
+    )
+    latency = time.time() - start_time
+    return transcript.strip(), latency
+
+
+def classify_command(
+    client,
+    text: str,
+    model: str,
+    temperature: float = 0,
+    max_tokens: int | None = None,
+):
+    start_time = time.time()
+    res = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": LLM_SYSTEM_PROMPT},
+            {"role": "user", "content": text},
+        ],
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    latency = time.time() - start_time
+    return res.choices[0].message.content.strip(), latency
+
+
+def parse_api_line(llm_text: str) -> str:
+    """Parse the API-only format from the LLM output.
+
+    Expected:
+      API: ...
+    """
+    for line in (llm_text or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.upper().startswith("API:"):
+            return line.split(":", 1)[1].strip()
+    return ""
+
+
+def normalize_api_output(raw_text: str) -> str:
+    if not raw_text:
+        return "KHONG_XAC_DINH"
+
+    # Preserve the original object text (case/diacritics) like testspeed.py.
+    match = re.search(r"TIM_DEN_LAY\s*:\s*([^\n\r]+)", raw_text.strip(), flags=re.IGNORECASE)
+    if match:
+        obj = match.group(1).strip()
+        return f"TIM_DEN_LAY: {obj}" if obj else "TIM_DEN_LAY"
+
+    text_up = raw_text.strip().upper()
+    if "THIET_LAP_CAU_HINH" in text_up:
+        return "THIET_LAP_CAU_HINH"
+    if "O_PHIA_TRUOC_CO_GI" in text_up:
+        return "O_PHIA_TRUOC_CO_GI"
+
+    return "KHONG_XAC_DINH"
+
+
+def execute_command(api_string: str):
+    response = format_command_response(api_string)
+    print(response)
+
+
+def format_command_response(api_string: str) -> str:
+    if "TIM_DEN_LAY" in api_string:
+        do_vat = api_string.split(":")[-1].strip()
+        if do_vat:
+            return f"Dang tim va lay {do_vat}."
+        return "Dang tim va lay vat the."
+    if "THIET_LAP_CAU_HINH" in api_string:
+        return "Mo bang thiet lap cau hinh."
+    if "O_PHIA_TRUOC_CO_GI" in api_string:
+        return "Bat camera quet phia truoc."
+    return "Lenh khong xac dinh."
+
+
+def process_voice_command(audio_path: str, config=cfg):
+    if not audio_path:
+        return
+
+    try:
+        client = init_client(config.GROQ_API_KEY, config.GROQ_BASE_URL)
+
+        print("Dang gui audio len Whisper...")
+        text, whisper_latency = transcribe_audio(
+            client,
+            audio_path,
+            config.WHISPER_MODEL,
+            config.WHISPER_LANG,
+            config.WHISPER_PROMPT,
+        )
+
+        if not text or len(text) < 3:
+            print("Khong nghe ro hoac chi co tieng on.")
+            return
+
+        print(f"Nghe duoc: \"{text}\"")
+        print(f"Whisper latency: {whisper_latency:.3f} giay\n")
+
+        print("Dang phan loai lenh bang LLM...")
+        llm_text, llm_latency = classify_command(
+            client,
+            text,
+            config.LLM_MODEL,
+            temperature=getattr(config, "LLM_TEMPERATURE", 0),
+            max_tokens=getattr(config, "LLM_MAX_TOKENS", None),
+        )
+        api_string = parse_api_line(llm_text) or llm_text
+
+        api_string = normalize_api_output(api_string)
+        if api_string and "KHONG_LIEN_QUAN" in api_string.upper():
+            api_string = "KHONG_XAC_DINH"
+
+        print(f"LENH API: {api_string}")
+        print(f"LLM latency: {llm_latency:.3f} giay")
+
+        execute_command(api_string)
+
+    except Exception as exc:
+        print(f"Loi xu ly API: {exc}")
+
+
+def process_voice_command_return(audio_path: str, config=cfg):
+    api_string, transcript = process_voice_command_api(audio_path, config=config)
+    if not api_string:
+        return None
+    if api_string == "KHONG_XAC_DINH":
+        return "Khong nghe ro hoac chi co tieng on." if not transcript else "Lenh khong xac dinh."
+    return format_command_response(api_string)
+
+
+def process_voice_command_api(audio_path: str, config=cfg, include_latency: bool = False):
+    if not audio_path:
+        return (None, None, None) if include_latency else (None, None)
+
+    try:
+        client = init_client(config.GROQ_API_KEY, config.GROQ_BASE_URL)
+
+        text, whisper_latency = transcribe_audio(
+            client,
+            audio_path,
+            config.WHISPER_MODEL,
+            config.WHISPER_LANG,
+            config.WHISPER_PROMPT,
+        )
+
+        if not text or len(text) < 3:
+            if include_latency:
+                return "KHONG_XAC_DINH", text, {"whisper_s": whisper_latency, "llm_s": 0.0}
+            return "KHONG_XAC_DINH", text
+
+        llm_text, llm_latency = classify_command(
+            client,
+            text,
+            config.LLM_MODEL,
+            temperature=getattr(config, "LLM_TEMPERATURE", 0),
+            max_tokens=getattr(config, "LLM_MAX_TOKENS", None),
+        )
+        api_string = parse_api_line(llm_text) or llm_text
+
+        api_string = normalize_api_output(api_string)
+        if api_string and "KHONG_LIEN_QUAN" in api_string.upper():
+            api_string = "KHONG_XAC_DINH"
+        if include_latency:
+            steps = {"whisper_s": whisper_latency, "llm_s": llm_latency}
+            return api_string, text, steps
+        return api_string, text
+
+    except Exception:
+        return (None, None, None) if include_latency else (None, None)

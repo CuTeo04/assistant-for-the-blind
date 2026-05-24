@@ -1,0 +1,52 @@
+{
+  "server": {
+    "log_enabled": true,
+    "host": "0.0.0.0",
+    "port": 8000
+  },
+  "stt": {
+    "groq_api_key": "${GROQ_API_KEY}",
+    "groq_base_url": "https://api.groq.com/openai/v1",
+    "device_id": 2,
+    "sample_rate": 16000,
+    "duration_sec": 3,
+    "silence_db": -38,
+    "frame_ms": 10,
+    "whisper_model": "whisper-large-v3",
+    "whisper_lang": "vi",
+    "llm_model": "llama-3.1-8b-instant",
+    "llm_temperature": 0.1,
+    "llm_max_tokens": 150,
+    "audio_temp_file": "current_cmd.wav"
+  },
+  "tts": {
+    "groq_api_key": "${GROQ_API_KEY}",
+    "groq_base_url": "https://api.groq.com/openai/v1",
+    "llm_model": "llama-3.1-8b-instant",
+    "max_tokens": 150,
+    "temperature": 0
+  },
+  "vision": {
+    "real_hand_length_cm": 7.0,
+    "known_distance_cm": 45.0,
+    "max_size": 1280,
+    "device": "cpu",
+    "num_threads": 8,
+    "input_size_depth": 518,
+    "yolo_model_path": "models/yolo11n.pt",
+    "da2_checkpoint": "models/checkpoints/depth_anything_v2_metric_hypersim_vits.pth",
+    "da2_onnx_path": "models/checkpoints/depth_anything_v2_metric_hypersim_vits.onnx",
+    "da2_use_onnx": true,
+    "da2_config": {
+      "encoder": "vits",
+      "features": 64,
+      "out_channels": [48, 96, 192, 384],
+      "max_depth": 20.0
+    },
+    "conf_threshold": 0.5,
+    "min_depth_m": 0.3,
+    "max_depth_m": 8.0,
+    "max_objects": 5,
+    "yolo_device": "cpu"
+  }
+}

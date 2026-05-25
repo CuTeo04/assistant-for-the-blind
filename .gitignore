@@ -2,7 +2,9 @@
 .env
 .env.*
 !.env.example
-
+AGENTS.md
+agent-ref/
+agents-ref/
 # Python
 __pycache__/
 *.py[cod]
@@ -47,6 +49,7 @@ models/**/*.pt
 models/**/*.pth
 models/**/*.onnx
 models/Depth-Anything-V2/
+
 
 # External datasets / generated outputs
 models/Depth-Anything-V2/assets/

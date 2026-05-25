@@ -9,8 +9,8 @@ from fastapi.responses import JSONResponse
 
 from app_config import get_config
 from service.vision_pipeline import describe_image_with_models, init_models
-from TTS.config import tts_config as tcfg
-from TTS.smoother import answer_from_api, init_client as init_tts_client
+from response.answer_generator import answer_from_api, init_client as init_response_client
+from response.config import tts_config as tcfg
 from STT.command_processor import process_voice_command_api
 
 _cfg = get_config()["server"]
@@ -32,6 +32,14 @@ yolo = None
 da_model = None
 hands_full = None
 hands_crop = None
+response_client = None
+
+
+def get_response_client():
+    global response_client
+    if response_client is None:
+        response_client = init_response_client(tcfg.API_KEY, tcfg.BASE_URL)
+    return response_client
 
 
 @app.on_event("startup")
@@ -85,10 +93,12 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             latency_ms = (time.perf_counter() - start) * 1000.0
             return result, latency_ms
 
+        parallel_start = time.perf_counter()
         (api_result, api_latency), (vision_result, vision_latency) = await asyncio.gather(
             asyncio.to_thread(run_api),
             asyncio.to_thread(run_vision),
         )
+        parallel_wall_ms = (time.perf_counter() - parallel_start) * 1000.0
         api_string, transcript, api_steps = api_result
         description, timings, distance_desc = vision_result
         if not api_string:
@@ -111,7 +121,8 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
         )
 
         logger.info(
-            "Task2 Vision | total=%.1f ms | steps(ms): load+resize=%.1f yolo=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f scene=%.1f | raw=%s",
+            "Task2 Vision | wall=%.1f ms | internal=%.1f ms | steps(ms): load+resize=%.1f yolo=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f scene=%.1f | raw=%s",
+            vision_latency,
             timings.get("total_ms", 0.0),
             timings.get("load_resize_ms", 0.0),
             timings.get("yolo_ms", 0.0),
@@ -122,14 +133,17 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             timings.get("scene_ms", 0.0),
             description,
         )
+        logger.info(
+            "Parallel STT+Vision wall=%.1f ms | expected~max(task1,task2)",
+            parallel_wall_ms,
+        )
         logger.info("Distance matrix (camera -> objects): %s", distance_desc)
 
-        tts_latency = 0.0
+        response_latency = 0.0
         try:
-            tts_client = init_tts_client(tcfg.GROQ_API_KEY, tcfg.GROQ_BASE_URL)
-            tts_start = time.perf_counter()
+            response_start = time.perf_counter()
             smooth_text = answer_from_api(
-                tts_client,
+                get_response_client(),
                 api_string,
                 transcript,
                 distance_desc,
@@ -137,15 +151,18 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
                 model=tcfg.LLM_MODEL,
                 max_tokens=tcfg.MAX_TOKENS,
                 temperature=tcfg.TEMPERATURE,
+                thinking_enabled=tcfg.THINKING_ENABLED,
+                reasoning_effort=tcfg.REASONING_EFFORT,
+                log_cache_usage=tcfg.LOG_CACHE_USAGE,
             )
-            tts_latency = (time.perf_counter() - tts_start) * 1000.0
+            response_latency = (time.perf_counter() - response_start) * 1000.0
         except Exception as exc:
             logger.warning("LLM answer failed: %s", exc)
             smooth_text = description
 
         response = {"api": api_string, "text": smooth_text}
         total_ms = (time.perf_counter() - req_start) * 1000.0
-        logger.info("Task3 TTS | total=%.1f ms", tts_latency)
+        logger.info("Task3 Response | total=%.1f ms", response_latency)
         logger.info("Request total latency: %.1f ms", total_ms)
         return response
 

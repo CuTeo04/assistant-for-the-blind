@@ -19,12 +19,15 @@
     "llm_max_tokens": 150,
     "audio_temp_file": "current_cmd.wav"
   },
-  "tts": {
-    "groq_api_key": "${GROQ_API_KEY}",
-    "groq_base_url": "https://api.groq.com/openai/v1",
-    "llm_model": "llama-3.1-8b-instant",
-    "max_tokens": 150,
-    "temperature": 0
+  "response": {
+    "api_key": "${DEEPSEEK_API_KEY}",
+    "base_url": "https://api.deepseek.com",
+    "llm_model": "deepseek-v4-flash",
+    "max_tokens": 180,
+    "temperature": 0,
+    "thinking_enabled": false,
+    "reasoning_effort": null,
+    "log_cache_usage": true
   },
   "vision": {
     "real_hand_length_cm": 7.0,

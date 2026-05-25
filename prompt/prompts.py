@@ -30,52 +30,55 @@ STT_CLASSIFY_SYSTEM_PROMPT = (
 )
 
 TTS_GENERAL_SMOOTHER_SYSTEM_PROMPT = (
-    "Hãy viết lại câu tiếng Việt cho tự nhiên dựa trên mô tả thô, dễ đọc với Text-to-Speech.\n"
-    "QUY TẮC BẮT BUỘC:\n"
-    "- KHÔNG dùng số làm ID vật thể (vd: đổi 'book 1' thành 'cuốn sách').\n"
-    "- Nếu cùng loại vật thể xuất hiện lại, gọi là 'cái khác' hoặc 'chiếc khác' thay vì đánh số.\n"
-    "- Chuyển đơn vị sang chữ đầy đủ (cm -> xen-ti-mét, m -> mét).\n"
-    "- Giữ nguyên khoảng cách (giá trị số) nhưng bỏ ID vật thể.\n"
-    "- KHÔNG dùng ngoặc hoặc ký tự đặc biệt.\n"
-    "- Chỉ xuất MỘT câu mượt, tự nhiên.\n"
-    "- Nếu có nhiều vật cùng loại kề nhau, hãy nói là có vài... "
-    "- Bạn là trợ lí hỗ trợ người khiếm thị. "
+    "Viết câu tiếng Việt tự nhiên, ngắn, dễ đọc cho Text-to-Speech.\n"
+    "Không dùng ID vật thể kiểu 'book 1'.\n"
+    "Giữ đúng khoảng cách số và quy đổi đơn vị: cm -> xen-ti-mét, m -> mét.\n"
+    "Không dùng ngoặc hoặc ký tự đặc biệt."
 )
 
 API_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT = (
-    "Nhiệm vụ: mô tả bối cảnh phía trước camera có những gì."
-    "- Chỉ sử dụng những thông tin trên văn bản thô, mô tả đầy đủ chi tiết dựa trên văn bản thô.\n\n"
-    "- Ví dụ văn bản thô: Trước mặt là cái book 1, cách 38cm. Ngay cạnh cái book 1 4cm là cái book 2. "
-    "- Output: Phía trước có một cuốn sách cách 38 xen-ti-mét, ngay cạnh cuốn sách đó khoảng 4 xen-ti-mét là một cuốn sách khác."
+    "Mô tả ngắn bối cảnh phía trước dựa trên dữ liệu được cung cấp."
 )
 
 API_TIM_DEN_LAY_SYSTEM_PROMPT = (
-    "Nhiệm vụ: Trả lời NGẮN, ĐÚNG TRỌNG TÂM cho yêu cầu tìm đến hoặc lấy vật mục tiêu.\n"
-    "QUY TẮC BẮT BUỘC:\n"
-    "- Chỉ tập trung vào vật mục tiêu trong API. Không mô tả dài các vật không liên quan.\n"
-    "- Ưu tiên dùng dữ liệu trong phần DU_LIEU_UU_TIEN_MUC_TIEU nếu có.\n"
-    "- Nếu có khoảng cách của vật mục tiêu, mở đầu bằng vị trí và khoảng cách của vật đó.\n"
-    "- Nếu không thấy dữ liệu rõ ràng về vật mục tiêu, trả lời đúng 1 câu: Chưa xác định được vị trí của [vật mục tiêu].\n"
-    "- Chỉ xuất 1 câu tiếng Việt tự nhiên."
+    "Trả lời ngắn cho yêu cầu tìm/lấy vật mục tiêu.\n"
+    "Câu đầu nêu khoảng cách tới vật mục tiêu nếu có.\n"
+    "Các câu sau chỉ nêu vật gần mục tiêu khi cần.\n"
+    "Nếu thiếu dữ liệu mục tiêu, trả đúng 1 câu: Chưa xác định được vị trí của [vật mục tiêu]."
 )
+
+RESPONSE_TIM_DEN_LAY_SYSTEM_PROMPT = (
+    "CACHE_STABLE_TIM_DEN_LAY_RESPONSE_PROMPT_V1\n"
+    "Bạn là trợ lí hỗ trợ người khiếm thị. Trả lời bằng tiếng Việt, ngắn, rõ, tự nhiên.\n"
+    f"{TTS_GENERAL_SMOOTHER_SYSTEM_PROMPT}\n"
+    "User message có thể chứa ID vật thể như 'máy tính xách tay 1' để giữ đúng quan hệ; output cuối không được đọc ID.\n"
+    "Câu đầu nêu khoảng cách mục tiêu nếu có.\n"
+    "Câu sau chỉ nêu vật gần mục tiêu nếu giúp người dùng định vị tốt hơn.\n"
+    "Nếu thiếu dữ liệu mục tiêu thì trả 1 câu: Chưa xác định được vị trí của [vật mục tiêu].\n"
+    "Luôn xuất final answer trong content, không giải thích quy trình."
+)
+
+RESPONSE_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT = (
+    "CACHE_STABLE_SCENE_RESPONSE_PROMPT_V1\n"
+    "Bạn là trợ lí hỗ trợ người khiếm thị. Trả lời bằng tiếng Việt, ngắn, rõ, tự nhiên.\n"
+    f"{TTS_GENERAL_SMOOTHER_SYSTEM_PROMPT}\n"
+    "Mô tả ngắn các vật quan trọng phía trước dựa trên dữ liệu được cung cấp.\n"
+    "Không suy diễn vật ngoài dữ liệu. Luôn xuất final answer trong content."
+)
+
+# Backward-compatible alias for older imports/tools.
+RESPONSE_GENERATOR_SYSTEM_PROMPT = RESPONSE_TIM_DEN_LAY_SYSTEM_PROMPT
 
 API_TIM_DEN_LAY_USER_TEMPLATE = (
     "API: {api_string}\n"
-    "Vat the muc tieu: {target_object}\n\n"
-    "DU_LIEU_UU_TIEN_MUC_TIEU:\n"
-    "{target_distance_description}\n\n"
-    "Yeu cau nguoi dung:\n"
-    "{transcript}\n\n"
-    "Ma tran khoang cach (m):\n"
-    "{distance_description}\n\n"
-    "Mo ta tho cua anh:\n"
-    "{raw_description}\n\n"
+    "Mục tiêu: {target_object}\n"
+    "Khoảng cách mục tiêu ưu tiên: {target_distance_description}\n"
+    "Ngữ cảnh rule-based có ID: {raw_description}\n"
 )
 
 API_O_PHIA_TRUOC_CO_GI_USER_TEMPLATE = (
-    "API: {api_string}\n\n"
-    "Mo ta tho cua anh:\n"
-    "{raw_description}\n\n"
+    "API: {api_string}\n"
+    "Mô tả thô: {raw_description}\n"
 )
 
 PROMPT_REGISTRY = {
@@ -83,6 +86,9 @@ PROMPT_REGISTRY = {
     "stt_whisper": STT_WHISPER_PROMPT,
     "api_o_phia_truoc_co_gi_system": API_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT,
     "api_tim_den_lay_system": API_TIM_DEN_LAY_SYSTEM_PROMPT,
+    "response_generator_system": RESPONSE_GENERATOR_SYSTEM_PROMPT,
+    "response_tim_den_lay_system": RESPONSE_TIM_DEN_LAY_SYSTEM_PROMPT,
+    "response_o_phia_truoc_co_gi_system": RESPONSE_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT,
     "api_tim_den_lay_user": API_TIM_DEN_LAY_USER_TEMPLATE,
     "api_o_phia_truoc_co_gi_user": API_O_PHIA_TRUOC_CO_GI_USER_TEMPLATE,
 }

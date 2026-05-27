@@ -9,7 +9,11 @@ from fastapi.responses import JSONResponse
 
 from app_config import get_config
 from service.vision_pipeline import describe_image_with_models, init_models
-from response.answer_generator import answer_from_api, init_client as init_response_client
+from response.answer_generator import (
+    answer_from_api,
+    init_client as init_response_client,
+    select_raw_description_for_api,
+)
 from response.config import tts_config as tcfg
 from STT.command_processor import process_voice_command_api
 
@@ -102,8 +106,10 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
         api_string, transcript, api_steps = api_result
         description, timings, distance_desc = vision_result
         if not api_string:
-            logger.warning("No audio provided after saving file")
-            return JSONResponse(status_code=400, content={"error": "No audio provided"})
+            logger.warning("Task1 returned empty api_string, fallback to KHONG_XAC_DINH")
+            api_string = "KHONG_XAC_DINH"
+        if transcript is None:
+            transcript = ""
 
         whisper_ms = 0.0
         llm_ms = 0.0
@@ -138,6 +144,17 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             parallel_wall_ms,
         )
         logger.info("Distance matrix (camera -> objects): %s", distance_desc)
+        selected_description = select_raw_description_for_api(
+            api_string,
+            distance_desc,
+            description,
+        )
+        if selected_description != description:
+            logger.info(
+                "Selected raw description for api=%s | raw=%s",
+                api_string,
+                selected_description,
+            )
 
         response_latency = 0.0
         try:
@@ -147,7 +164,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
                 api_string,
                 transcript,
                 distance_desc,
-                description,
+                selected_description,
                 model=tcfg.LLM_MODEL,
                 max_tokens=tcfg.MAX_TOKENS,
                 temperature=tcfg.TEMPERATURE,
@@ -158,7 +175,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             response_latency = (time.perf_counter() - response_start) * 1000.0
         except Exception as exc:
             logger.warning("LLM answer failed: %s", exc)
-            smooth_text = description
+            smooth_text = selected_description
 
         response = {"api": api_string, "text": smooth_text}
         total_ms = (time.perf_counter() - req_start) * 1000.0
@@ -182,4 +199,12 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host=_cfg["host"], port=int(_cfg["port"]))
+    ssl_certfile = _cfg.get("ssl_certfile") or None
+    ssl_keyfile = _cfg.get("ssl_keyfile") or None
+    uvicorn.run(
+        app,
+        host=_cfg["host"],
+        port=int(_cfg["port"]),
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile=ssl_keyfile,
+    )

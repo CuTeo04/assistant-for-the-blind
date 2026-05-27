@@ -29,7 +29,9 @@ def build_distance_description(objects: list[dict]) -> str:
         label = str(obj.get("label", "object"))
         counts[label] = counts.get(label, 0) + 1
         name = f"{label} {counts[label]}"
-        parts.append(f"{name}: {obj['Z']:.2f}m")
+        clock_label = str(obj.get("clock_label") or "").strip()
+        clock_part = f", {clock_label}" if clock_label else ""
+        parts.append(f"{name}: {obj['Z']:.2f}m{clock_part}")
 
     return "; ".join(parts)
 

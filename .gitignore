@@ -57,4 +57,5 @@ models/Depth-Anything-V2/metric_depth/assets/
 models/Depth-Anything-V2/metric_depth/dataset/splits/
 
 # Legacy local script contains a hardcoded API key; keep it out of git
-testspeed.py
+test-ophiatruoccogi
+test-timdenlay/

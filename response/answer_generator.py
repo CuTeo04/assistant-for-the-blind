@@ -49,6 +49,7 @@ YOLO_LABEL_VI = {
     "keyboard": "bàn phím",
     "laptop": "máy tính xách tay",
     "mouse": "chuột máy tính",
+    "person": "người",
     "remote": "điều khiển",
     "sofa": "ghế sofa",
     "table": "cái bàn",
@@ -126,7 +127,7 @@ def _extract_target_distance(distance_description: str, target_object: str) -> s
     for part in parts:
         label = part.split(":", 1)[0]
         if _contains_target(label, terms):
-            matched.append(part)
+            matched.append(_translate_yolo_labels(part))
 
     if matched:
         return "; ".join(matched)
@@ -148,6 +149,71 @@ def _extract_target_neighborhood(raw_description: str, target_object: str) -> st
         included_indexes.update(range(max(0, idx - 1), min(len(sentences), idx + 2)))
 
     return " ".join(sentences[idx] for idx in sorted(included_indexes))
+
+
+def _opposite_direction(direction: str) -> str:
+    opposites = {
+        "trước": "sau",
+        "sau": "trước",
+        "trái": "phải",
+        "phải": "trái",
+        "trên": "dưới",
+        "dưới": "trên",
+        "ngay cạnh": "ngay cạnh",
+    }
+    return opposites.get(direction, direction)
+
+
+def _distance_to_cm(distance_text: str) -> float | None:
+    match = re.search(r"([0-9]+(?:[,.][0-9]+)?)\s*(cm|m)\b", distance_text or "")
+    if not match:
+        return None
+    value = float(match.group(1).replace(",", "."))
+    unit = match.group(2).lower()
+    return value * 100.0 if unit == "m" else value
+
+
+def _split_distance_clock(info_text: str) -> tuple[str, str]:
+    text = (info_text or "").strip()
+    clock_match = re.search(r"\bhướng\s+([0-9]{1,2})\s+giờ\b", text, flags=re.IGNORECASE)
+    clock_text = f"hướng {clock_match.group(1)} giờ" if clock_match else ""
+    distance_match = re.search(r"([0-9]+(?:[,.][0-9]+)?\s*(?:cm|m))", text, flags=re.IGNORECASE)
+    distance_text = distance_match.group(1) if distance_match else ""
+    return distance_text.strip(), clock_text.strip()
+
+
+def _format_target_position_line(target_name: str, info_text: str) -> str:
+    distance_text, clock_text = _split_distance_clock(info_text)
+    if clock_text and distance_text:
+        return f"Mục tiêu: {target_name} ở {clock_text}, cách bạn {distance_text}."
+    if clock_text:
+        return f"Mục tiêu: {target_name} ở {clock_text}."
+    if distance_text:
+        return f"Mục tiêu: {target_name} cách bạn {distance_text}."
+    return f"Mục tiêu: {target_name}."
+
+
+def _direction_phrase(direction: str, immediate: bool = False) -> str:
+    direction = (direction or "").lower()
+    if direction in {"trái", "phải"}:
+        return f"{'ngay ' if immediate else ''}bên {direction}"
+    if direction in {"trước", "sau"}:
+        return f"{'ngay ' if immediate else ''}phía {direction}"
+    if direction in {"trên", "dưới"}:
+        return f"{'ngay ' if immediate else ''}bên {direction}"
+    return f"{'ngay ' if immediate else ''}{direction}".strip()
+
+
+def _format_relation_line(other_name: str, direction: str, target_name: str, distance: str = "") -> str:
+    distance_cm = _distance_to_cm(distance)
+    if distance_cm is not None and distance_cm < 25.0:
+        return f"Quan hệ: {other_name} ở {_direction_phrase(direction, immediate=True)} {target_name}."
+    if distance:
+        return (
+            f"Quan hệ: {other_name} ở {_direction_phrase(direction)} "
+            f"{target_name} khoảng {distance}."
+        )
+    return f"Quan hệ: {other_name} ở {_direction_phrase(direction)} {target_name}."
 
 
 def _translate_yolo_labels(text: str) -> str:
@@ -199,7 +265,7 @@ def _build_rule_context_for_target(
         label, sep, distance = part.partition(":")
         if sep and _contains_target(label, terms):
             target_name = _translate_object_name_with_id(label)
-            lines.append(f"Mục tiêu: {target_name} cách bạn {distance.strip()}.")
+            lines.append(_format_target_position_line(target_name, distance))
             break
 
     for sentence in re.split(r"(?<=[.!?])\s+", raw_description or ""):
@@ -208,32 +274,89 @@ def _build_rule_context_for_target(
             continue
 
         relation_match = re.search(
-            r"Phía\s+(trước|sau)\s+cái\s+(.+?)\s+([0-9]+(?:[,.][0-9]+)?\s*(?:cm|m))\s+là\s+cái\s+(.+?)\s*\.",
+            r"(Phía|Bên)\s+(trước|sau|trái|phải)\s+cái\s+(.+?)\s+"
+            r"([0-9]+(?:[,.][0-9]+)?\s*(?:cm|m))\s+là\s+cái\s+(.+?)\s*\.",
             sentence,
             flags=re.IGNORECASE,
         )
         if relation_match:
-            direction = relation_match.group(1).lower()
-            left_obj = _translate_object_name_with_id(relation_match.group(2))
-            distance = relation_match.group(3)
-            right_obj = _translate_object_name_with_id(relation_match.group(4))
-            lines.append(f"Quan hệ: {right_obj} ở phía {direction} {left_obj} khoảng {distance}.")
+            direction = relation_match.group(2).lower()
+            anchor_raw = relation_match.group(3)
+            distance = relation_match.group(4)
+            other_raw = relation_match.group(5)
+            anchor_name = _translate_object_name_with_id(anchor_raw)
+            other_name = _translate_object_name_with_id(other_raw)
+            if _contains_target(anchor_raw, terms):
+                lines.append(_format_relation_line(other_name, direction, anchor_name, distance))
+            elif _contains_target(other_raw, terms):
+                opposite = _opposite_direction(direction)
+                lines.append(_format_relation_line(anchor_name, opposite, other_name, distance))
             continue
 
-        side_match = re.search(
-            r"Ngay\s+cạnh\s+cái\s+(.+?)\s+([0-9]+(?:[,.][0-9]+)?\s*(?:cm|m))\s+là\s+cái\s+(.+?)\s*\.",
+        adjacent_match = re.search(
+            r"Ngay\s+cạnh\s+cái\s+(.+?)\s+"
+            r"([0-9]+(?:[,.][0-9]+)?\s*(?:cm|m))\s+là\s+cái\s+(.+?)\s*\.",
             sentence,
             flags=re.IGNORECASE,
         )
-        if side_match:
-            left_obj = _translate_object_name_with_id(side_match.group(1))
-            distance = side_match.group(2)
-            right_obj = _translate_object_name_with_id(side_match.group(3))
-            lines.append(f"Quan hệ: {right_obj} ở ngay cạnh {left_obj} khoảng {distance}.")
+        if adjacent_match:
+            anchor_raw = adjacent_match.group(1)
+            distance = adjacent_match.group(2)
+            other_raw = adjacent_match.group(3)
+            anchor_name = _translate_object_name_with_id(anchor_raw)
+            other_name = _translate_object_name_with_id(other_raw)
+            if _contains_target(anchor_raw, terms):
+                lines.append(_format_relation_line(other_name, "ngay cạnh", anchor_name, distance))
+            elif _contains_target(other_raw, terms):
+                lines.append(_format_relation_line(anchor_name, "ngay cạnh", other_name, distance))
+            continue
+
+        vertical_match = re.search(
+            r"Bên\s+(trên|dưới)\s+cái\s+(.+?)\s+là\s+cái\s+(.+?)\s*\.",
+            sentence,
+            flags=re.IGNORECASE,
+        )
+        if vertical_match:
+            direction = vertical_match.group(1).lower()
+            anchor_raw = vertical_match.group(2)
+            other_raw = vertical_match.group(3)
+            anchor_name = _translate_object_name_with_id(anchor_raw)
+            other_name = _translate_object_name_with_id(other_raw)
+            if _contains_target(anchor_raw, terms):
+                lines.append(_format_relation_line(other_name, direction, anchor_name))
+            elif _contains_target(other_raw, terms):
+                opposite = _opposite_direction(direction)
+                lines.append(_format_relation_line(anchor_name, opposite, other_name))
 
     if not lines:
         return _extract_target_neighborhood(raw_description, target_object)
     return "\n".join(lines)
+
+
+def _looks_like_target_context(raw_description: str) -> bool:
+    return bool(re.search(r"(^|\n)(Mục tiêu|Quan hệ):", raw_description or ""))
+
+
+def select_raw_description_for_api(
+    api_string: str,
+    distance_description: str,
+    raw_description: str,
+) -> str:
+    """Choose the raw description shape that matches the classified API intent."""
+    api_upper = (api_string or "").upper()
+    if not api_upper.startswith("TIM_DEN_LAY"):
+        return _translate_yolo_labels(raw_description)
+
+    target_object = api_string.split(":", 1)[1].strip() if ":" in (api_string or "") else ""
+    if not target_object:
+        return _translate_yolo_labels(raw_description)
+
+    return _build_rule_context_for_target(
+        api_string,
+        target_object,
+        distance_description,
+        raw_description,
+    )
 
 
 def _remove_redundant_target_front_sentence(text: str, target_object: str) -> str:
@@ -329,6 +452,40 @@ def _finalize_answer(text: str, target_object: str = "") -> str:
     return _capitalize_sentences(output)
 
 
+def _relation_subject(relation_sentence: str) -> str:
+    match = re.match(r"\s*Quan hệ:\s+(.+?)\s+ở\s+", relation_sentence or "", flags=re.IGNORECASE)
+    return match.group(1).strip() if match else ""
+
+
+def _relation_to_answer_sentence(relation_sentence: str) -> str:
+    text = re.sub(r"^\s*Quan hệ:\s*", "", relation_sentence or "", flags=re.IGNORECASE).strip()
+    if text and not text.endswith((".", "!", "?")):
+        text += "."
+    return text
+
+
+def _preserve_target_relations(answer: str, raw_description: str) -> str:
+    """Append any target relation lines that the LLM omitted."""
+    if not _looks_like_target_context(raw_description):
+        return answer
+
+    output = answer or ""
+    normalized_output = _normalize_text(output)
+    missing_sentences = []
+    for relation in re.findall(r"Quan hệ:\s*[^.]+(?:\.)?", raw_description or "", flags=re.IGNORECASE):
+        subject = _relation_subject(relation)
+        if not subject:
+            continue
+        subject_without_id = re.sub(r"\s+\d+\b", "", subject).strip()
+        if _normalize_text(subject_without_id) in normalized_output:
+            continue
+        missing_sentences.append(_relation_to_answer_sentence(relation))
+
+    if not missing_sentences:
+        return output
+    return " ".join([output.strip(), *missing_sentences]).strip()
+
+
 def _fallback_answer(
     api_string: str,
     target_object: str,
@@ -341,9 +498,17 @@ def _fallback_answer(
         if target_distance.startswith("Không có"):
             return f"Chưa xác định được vị trí của {target_object}."
         first_match = target_distance.split(";", 1)[0].strip()
-        distance = first_match.split(":", 1)[1].strip() if ":" in first_match else ""
+        info_text = first_match.split(":", 1)[1].strip() if ":" in first_match else ""
+        distance, clock_text = _split_distance_clock(info_text)
+        if distance and clock_text:
+            return _finalize_answer(
+                f"Cái {target_object} ở {clock_text}, cách bạn {distance}.",
+                target_object,
+            )
         if distance:
             return _finalize_answer(f"Cái {target_object} cách bạn {distance}.", target_object)
+        if clock_text:
+            return _finalize_answer(f"Cái {target_object} ở {clock_text}.", target_object)
         return f"Chưa xác định được vị trí của {target_object}."
 
     return _finalize_answer(raw_description, target_object)
@@ -380,12 +545,15 @@ def answer_from_api(
 
     if target_object:
         target_distance_text = _extract_target_distance(distance_description or "", target_object)
-        target_context_text = _build_rule_context_for_target(
-            api_string,
-            target_object,
-            distance_description,
-            raw_description,
-        )
+        if _looks_like_target_context(raw_description):
+            target_context_text = raw_description
+        else:
+            target_context_text = _build_rule_context_for_target(
+                api_string,
+                target_object,
+                distance_description,
+                raw_description,
+            )
         user_prompt = API_TIM_DEN_LAY_USER_TEMPLATE.format(
             api_string=api_string,
             target_object=target_object,
@@ -433,4 +601,5 @@ def answer_from_api(
         )
     if not content:
         return _fallback_answer(api_string, target_object, distance_description, raw_description)
+    content = _preserve_target_relations(content, raw_description) if target_object else content
     return _finalize_answer(content, target_object)

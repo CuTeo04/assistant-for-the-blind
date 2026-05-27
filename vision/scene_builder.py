@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from vision.clock_direction import compute_clock_direction, format_clock_label
+
 BG_CLASSES = {"wall", "ceiling", "floor", "window"}
 
 
@@ -106,6 +108,13 @@ def filter_objects(
         X_right = float((x2 - (img_w / 2.0)) * Z / focal_length)
         if X_left > X_right:
             X_left, X_right = X_right, X_left
+        clock = compute_clock_direction(
+            cx,
+            cy,
+            image_width=img_w,
+            image_height=img_h,
+            dead_zone_px=min(img_w, img_h) * 0.04,
+        )
 
         objects.append(
             {
@@ -123,6 +132,9 @@ def filter_objects(
                 "Y": Y,
                 "Z": Z,
                 "img_w": img_w,
+                "img_h": img_h,
+                "clock": clock,
+                "clock_label": format_clock_label(clock),
             }
         )
 

@@ -20,35 +20,48 @@ def init_mediapipe_hands():
     return hands_full, hands_crop
 
 
-def detect_hand_landmarks(
-    img_bgr,
-    boxes,
-    yolo,
-    hands_full,
-    hands_crop,
-    conf_threshold: float = 0.5,
-):
-    h, w = img_bgr.shape[:2]
+def detect_hand_landmarks_full_image(img_bgr, hands_full):
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-
     start = time.perf_counter()
     result = hands_full.process(img_rgb)
     full_time = time.perf_counter() - start
 
     if result.multi_hand_landmarks:
         print(f"MediaPipe detect tay tren toan anh ({full_time:.3f}s)")
-        return result.multi_hand_landmarks[0], (0, 0), img_bgr
+        return result.multi_hand_landmarks[0], (0, 0), img_bgr, full_time
 
     print(f"Khong thay tay tren toan anh ({full_time:.3f}s), thu crop person...")
+    return None, None, None, full_time
+
+
+def detect_hand_landmarks_from_boxes(
+    img_bgr,
+    boxes,
+    yolo,
+    hands_crop,
+    conf_threshold: float = 0.5,
+):
+    h, w = img_bgr.shape[:2]
 
     for det in boxes:
-        if det[4] < conf_threshold:
+        conf = float(det["conf"]) if isinstance(det, dict) else float(det[4])
+        if conf < conf_threshold:
             continue
-        label = yolo.names[int(det[5])]
+        label = (
+            str(det["label"]).strip().lower()
+            if isinstance(det, dict)
+            else str(yolo.names[int(det[5])]).strip().lower()
+        )
         if label != "person":
             continue
 
-        x1, y1, x2, y2 = map(int, det[:4])
+        if isinstance(det, dict):
+            x1 = int(det["x1"])
+            y1 = int(det["y1"])
+            x2 = int(det["x2"])
+            y2 = int(det["y2"])
+        else:
+            x1, y1, x2, y2 = map(int, det[:4])
         box_h = y2 - y1
         box_w = x2 - x1
 
@@ -69,9 +82,34 @@ def detect_hand_landmarks(
 
         if result.multi_hand_landmarks:
             print(f"MediaPipe detect tay trong crop ({crop_time:.3f}s)")
-            return result.multi_hand_landmarks[0], (crop_x1, crop_y1), hand_crop
+            return result.multi_hand_landmarks[0], (crop_x1, crop_y1), hand_crop, crop_time
 
-    return None, None, None
+    return None, None, None, 0.0
+
+
+def detect_hand_landmarks(
+    img_bgr,
+    boxes,
+    yolo,
+    hands_full,
+    hands_crop,
+    conf_threshold: float = 0.5,
+):
+    hand_landmarks, hand_origin, hand_crop_img, _full_time = detect_hand_landmarks_full_image(
+        img_bgr,
+        hands_full,
+    )
+    if hand_landmarks is not None:
+        return hand_landmarks, hand_origin, hand_crop_img
+
+    hand_landmarks, hand_origin, hand_crop_img, _crop_time = detect_hand_landmarks_from_boxes(
+        img_bgr,
+        boxes,
+        yolo,
+        hands_crop,
+        conf_threshold=conf_threshold,
+    )
+    return hand_landmarks, hand_origin, hand_crop_img
 
 
 def compute_focal_length(

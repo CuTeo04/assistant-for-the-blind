@@ -32,7 +32,7 @@ if not LOG_ENABLED:
 
 app = FastAPI(title="Voice Command Server")
 
-yolo = None
+detector = None
 da_model = None
 hands_full = None
 hands_crop = None
@@ -48,9 +48,9 @@ def get_response_client():
 
 @app.on_event("startup")
 def load_models():
-    global yolo, da_model, hands_full, hands_crop
+    global detector, da_model, hands_full, hands_crop
     logger.info("Loading vision models...")
-    yolo, da_model, hands_full, hands_crop = init_models()
+    detector, da_model, hands_full, hands_crop = init_models()
     logger.info("Vision models ready")
 
 
@@ -92,7 +92,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
         def run_vision():
             start = time.perf_counter()
             result = describe_image_with_models(
-                image_path, yolo, da_model, hands_full, hands_crop
+                image_path, detector, da_model, hands_full, hands_crop
             )
             latency_ms = (time.perf_counter() - start) * 1000.0
             return result, latency_ms
@@ -127,16 +127,34 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
         )
 
         logger.info(
-            "Task2 Vision | wall=%.1f ms | internal=%.1f ms | steps(ms): load+resize=%.1f yolo=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f scene=%.1f | raw=%s",
+            "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f scene=%.1f distance_desc=%.1f | detector_substeps(ms): yolo_full=%.1f yolo_filter=%.1f yolo_tiled=%.1f yolo_nms=%.1f yolo_redetect=%.1f yw_full=%.1f yw_filter=%.1f yw_tiled=%.1f yw_nms=%.1f yw_redetect=%.1f merge=%.1f detector_overhead=%.1f | raw=%s",
             vision_latency,
             timings.get("total_ms", 0.0),
+            timings.get("accounted_ms", 0.0),
+            timings.get("unaccounted_ms", 0.0),
             timings.get("load_resize_ms", 0.0),
+            timings.get("detector_total_ms", timings.get("yolo_ms", 0.0)),
             timings.get("yolo_ms", 0.0),
+            timings.get("yolo_world_ms", 0.0),
             timings.get("hand_ms", 0.0),
             timings.get("focal_ms", 0.0),
             timings.get("depth_ms", 0.0),
             timings.get("calib_objects_ms", 0.0),
+            timings.get("filter_ms", 0.0),
             timings.get("scene_ms", 0.0),
+            timings.get("distance_desc_ms", 0.0),
+            timings.get("yolo_full_infer_ms", 0.0),
+            timings.get("yolo_full_filter_ms", 0.0),
+            timings.get("yolo_tiled_ms", 0.0),
+            timings.get("yolo_nms_ms", 0.0),
+            timings.get("yolo_redetect_ms", 0.0),
+            timings.get("yolo_world_full_infer_ms", 0.0),
+            timings.get("yolo_world_full_filter_ms", 0.0),
+            timings.get("yolo_world_tiled_ms", 0.0),
+            timings.get("yolo_world_nms_ms", 0.0),
+            timings.get("yolo_world_redetect_ms", 0.0),
+            timings.get("detector_merge_ms", 0.0),
+            timings.get("detector_overhead_ms", 0.0),
             description,
         )
         logger.info(

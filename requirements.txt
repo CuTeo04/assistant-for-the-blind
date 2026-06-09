@@ -18,6 +18,7 @@ matplotlib==3.8.4
 timm==0.9.16
 einops==0.7.0
 huggingface_hub==0.34.4
+git+https://github.com/ultralytics/CLIP.git
 
 python-dotenv
 onnxruntime==1.18.1

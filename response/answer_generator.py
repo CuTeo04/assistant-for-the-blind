@@ -3,6 +3,7 @@ import unicodedata
 
 from openai import OpenAI
 
+from log_settings import print_if_enabled
 from prompt.prompts import (
     API_O_PHIA_TRUOC_CO_GI_USER_TEMPLATE,
     API_TIM_DEN_LAY_USER_TEMPLATE,
@@ -587,14 +588,15 @@ def answer_from_api(
         cache_hit = getattr(res.usage, "prompt_cache_hit_tokens", None)
         cache_miss = getattr(res.usage, "prompt_cache_miss_tokens", None)
         if cache_hit is not None or cache_miss is not None:
-            print(f"DeepSeek cache usage | hit={cache_hit or 0} | miss={cache_miss or 0}")
+            print_if_enabled("response_debug", f"DeepSeek cache usage | hit={cache_hit or 0} | miss={cache_miss or 0}")
 
     choice = res.choices[0]
     message = choice.message
     content = (getattr(message, "content", None) or "").strip()
     if log_cache_usage:
         reasoning = getattr(message, "reasoning_content", None) or ""
-        print(
+        print_if_enabled(
+            "response_debug",
             "DeepSeek response usage | "
             f"finish_reason={getattr(choice, 'finish_reason', None)} | "
             f"content_chars={len(content)} | reasoning_chars={len(reasoning)}"

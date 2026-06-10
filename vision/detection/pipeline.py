@@ -5,6 +5,7 @@ import time
 
 import numpy as np
 
+from log_settings import is_enabled
 from vision.config import vision_config as cfg
 
 from .backends import ensure_detector_backend
@@ -75,6 +76,59 @@ def tile_starts(length: int, tile_size: int, overlap: float) -> list[int]:
     if starts[-1] != last:
         starts.append(last)
     return starts
+
+
+def _centered_start(center: float, tile_size: int, max_length: int) -> int:
+    if max_length <= tile_size:
+        return 0
+    start = int(round(center - tile_size / 2.0))
+    return max(0, min(start, max_length - tile_size))
+
+
+def build_center_tile_meta(
+    orig_h: int,
+    orig_w: int,
+    tile_size: int,
+    overlap: float,
+    center_tile_count: int,
+) -> list[tuple[int, int, int, int]]:
+    if orig_h <= tile_size and orig_w <= tile_size:
+        return [(0, 0, orig_w, orig_h)]
+
+    center_tile_count = 4 if int(center_tile_count) >= 4 else 2
+    stride = max(1, int(round(tile_size * (1.0 - overlap))))
+    cx = orig_w / 2.0
+    cy = orig_h / 2.0
+
+    tiles: list[tuple[int, int, int, int]] = []
+    if center_tile_count == 2:
+        if orig_h >= orig_w:
+            centers = [(cx, cy - stride / 2.0), (cx, cy + stride / 2.0)]
+        else:
+            centers = [(cx - stride / 2.0, cy), (cx + stride / 2.0, cy)]
+    else:
+        half_stride = stride / 2.0
+        centers = [
+            (cx - half_stride, cy - half_stride),
+            (cx + half_stride, cy - half_stride),
+            (cx - half_stride, cy + half_stride),
+            (cx + half_stride, cy + half_stride),
+        ]
+
+    seen: set[tuple[int, int, int, int]] = set()
+    for tile_cx, tile_cy in centers:
+        x1 = _centered_start(tile_cx, tile_size, orig_w)
+        y1 = _centered_start(tile_cy, tile_size, orig_h)
+        x2 = min(x1 + tile_size, orig_w)
+        y2 = min(y1 + tile_size, orig_h)
+        tile = (x1, y1, x2, y2)
+        if tile not in seen:
+            seen.add(tile)
+            tiles.append(tile)
+
+    if not tiles:
+        return [(0, 0, min(tile_size, orig_w), min(tile_size, orig_h))]
+    return tiles
 
 
 def iou(box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
@@ -428,7 +482,8 @@ def redetect_for_nested_candidates(
 
     start = time.perf_counter()
     candidates = find_redetect_candidates(detections, backend, config)
-    logger.info("%s redetect nested candidates: count=%d", log_prefix, len(candidates))
+    if is_enabled("vision_detector_debug", True):
+        logger.info("%s redetect nested candidates: count=%d", log_prefix, len(candidates))
     if not candidates:
         return detections
 
@@ -453,28 +508,30 @@ def redetect_for_nested_candidates(
             redetect_results = map_crop_boxes_to_pipeline_coords(crop_results, crop_box)
             resolution = resolve_redetect_candidate(det_a, det_b, redetect_results, config, candidate)
 
-        logger.info(
-            "%s redetect candidate | class=%s ids=[%d,%d] crop=%s results=%d decision=%s",
-            log_prefix,
-            candidate["label"],
-            candidate["id_a"],
-            candidate["id_b"],
-            crop_box,
-            len(redetect_results),
-            resolution.get("action", "keep_both"),
-        )
+        if is_enabled("vision_detector_debug", True):
+            logger.info(
+                "%s redetect candidate | class=%s ids=[%d,%d] crop=%s results=%d decision=%s",
+                log_prefix,
+                candidate["label"],
+                candidate["id_a"],
+                candidate["id_b"],
+                crop_box,
+                len(redetect_results),
+                resolution.get("action", "keep_both"),
+            )
         resolutions.append(resolution)
 
     final_detections, metadata = apply_redetect_resolution(detections, candidates, resolutions)
     elapsed_ms = (time.perf_counter() - start) * 1000.0
-    logger.info(
-        "%s redetect complete: before=%d after=%d metadata=%s latency=%.1f ms",
-        log_prefix,
-        len(detections),
-        len(final_detections),
-        metadata,
-        elapsed_ms,
-    )
+    if is_enabled("vision_detector_debug", True):
+        logger.info(
+            "%s redetect complete: before=%d after=%d metadata=%s latency=%.1f ms",
+            log_prefix,
+            len(detections),
+            len(final_detections),
+            metadata,
+            elapsed_ms,
+        )
     return final_detections
 
 
@@ -511,21 +568,51 @@ def detect_tiled_on_original(
     imgsz=None,
     device=None,
     filter_fn=None,
+    tile_size: int | None = None,
+    overlap: float | None = None,
+    tile_mode: str | None = None,
+    center_tile_count: int | None = None,
 ) -> np.ndarray:
     backend = ensure_detector_backend(yolo, source_name="yolo")
     orig_h, orig_w = orig_img.shape[:2]
-    tile_size = max(1, int(cfg.TILE_SIZE))
-    overlap = min(max(float(cfg.TILE_OVERLAP), 0.0), 0.95)
+    tile_size = max(1, int(cfg.TILE_SIZE if tile_size is None else tile_size))
+    overlap = min(max(float(cfg.TILE_OVERLAP if overlap is None else overlap), 0.0), 0.95)
+    tile_mode = str(cfg.TILE_MODE if tile_mode is None else tile_mode).strip().lower()
+    center_tile_count = int(cfg.CENTER_TILE_COUNT if center_tile_count is None else center_tile_count)
     scale_x = target_w / float(orig_w)
     scale_y = target_h / float(orig_h)
+    batch_size = max(1, int(backend.tile_batch_size()))
 
     boxes = []
-    for y1 in tile_starts(orig_h, tile_size, overlap):
-        for x1 in tile_starts(orig_w, tile_size, overlap):
-            x2 = min(x1 + tile_size, orig_w)
-            y2 = min(y1 + tile_size, orig_h)
-            tile = orig_img[y1:y2, x1:x2]
-            tile_boxes = backend.predict_boxes(tile, conf_threshold, imgsz=imgsz, device=device)
+    tile_meta: list[tuple[int, int, int, int]] = []
+    tile_images: list[np.ndarray] = []
+    if tile_mode == "center_batch":
+        tile_meta = build_center_tile_meta(
+            orig_h,
+            orig_w,
+            tile_size,
+            overlap,
+            center_tile_count,
+        )
+        tile_images = [orig_img[y1:y2, x1:x2] for x1, y1, x2, y2 in tile_meta]
+    else:
+        for y1 in tile_starts(orig_h, tile_size, overlap):
+            for x1 in tile_starts(orig_w, tile_size, overlap):
+                x2 = min(x1 + tile_size, orig_w)
+                y2 = min(y1 + tile_size, orig_h)
+                tile_meta.append((x1, y1, x2, y2))
+                tile_images.append(orig_img[y1:y2, x1:x2])
+
+    for start in range(0, len(tile_images), batch_size):
+        batch_images = tile_images[start:start + batch_size]
+        batch_meta = tile_meta[start:start + batch_size]
+        batch_boxes_list = backend.predict_boxes_batch(
+            batch_images,
+            conf_threshold,
+            imgsz=imgsz,
+            device=device,
+        )
+        for (x1, y1, _x2, _y2), tile_boxes in zip(batch_meta, batch_boxes_list):
             if filter_fn is not None:
                 tile_boxes = filter_fn(tile_boxes, backend)
             if tile_boxes.size == 0:
@@ -554,6 +641,12 @@ def run_detector_pipeline(
     log_prefix: str = "YOLO",
     return_timings: bool = False,
     tiled_enabled: bool | None = None,
+    full_image_enabled: bool = True,
+    tile_imgsz=None,
+    tile_size: int | None = None,
+    tile_overlap: float | None = None,
+    tile_mode: str | None = None,
+    center_tile_count: int | None = None,
 ) -> np.ndarray | tuple[np.ndarray, dict[str, float]]:
     backend = ensure_detector_backend(model, source_name=log_prefix.lower())
     tiled_enabled = cfg.TILED_ENABLED if tiled_enabled is None else bool(tiled_enabled)
@@ -567,15 +660,18 @@ def run_detector_pipeline(
     }
     pipeline_start = time.perf_counter()
 
-    step_start = time.perf_counter()
-    full_boxes = backend.predict_boxes(img, conf_threshold, imgsz=imgsz, device=device)
-    timings["full_infer_ms"] = (time.perf_counter() - step_start) * 1000.0
-    full_total = len(full_boxes)
-    step_start = time.perf_counter()
-    if filter_fn is not None:
-        full_boxes = filter_fn(full_boxes, backend)
-    full_boxes = full_boxes.astype(np.float32)
-    timings["full_filter_ms"] = (time.perf_counter() - step_start) * 1000.0
+    full_boxes = np.empty((0, 6), dtype=np.float32)
+    full_total = 0
+    if full_image_enabled:
+        step_start = time.perf_counter()
+        full_boxes = backend.predict_boxes(img, conf_threshold, imgsz=imgsz, device=device)
+        timings["full_infer_ms"] = (time.perf_counter() - step_start) * 1000.0
+        full_total = len(full_boxes)
+        step_start = time.perf_counter()
+        if filter_fn is not None:
+            full_boxes = filter_fn(full_boxes, backend)
+        full_boxes = full_boxes.astype(np.float32)
+        timings["full_filter_ms"] = (time.perf_counter() - step_start) * 1000.0
 
     if not tiled_enabled or orig_img is None:
         step_start = time.perf_counter()
@@ -588,13 +684,14 @@ def run_detector_pipeline(
         )
         timings["redetect_ms"] = (time.perf_counter() - step_start) * 1000.0
         timings["pipeline_ms"] = (time.perf_counter() - pipeline_start) * 1000.0
-        logger.info(
-            "%s full-image detections: full=%d filtered=%d tiled=0 merged=%d",
-            log_prefix,
-            full_total,
-            len(full_boxes),
-            len(final_boxes),
-        )
+        if is_enabled("vision_detector_debug", True):
+            logger.info(
+                "%s full-image detections: full=%d filtered=%d tiled=0 merged=%d",
+                log_prefix,
+                full_total,
+                len(full_boxes),
+                len(final_boxes),
+            )
         if return_timings:
             return final_boxes, timings
         return final_boxes
@@ -607,9 +704,13 @@ def run_detector_pipeline(
         img_w,
         img_h,
         conf_threshold,
-        imgsz=imgsz,
+        imgsz=imgsz if tile_imgsz is None else tile_imgsz,
         device=device,
         filter_fn=filter_fn,
+        tile_size=tile_size,
+        overlap=tile_overlap,
+        tile_mode=tile_mode,
+        center_tile_count=center_tile_count,
     )
     timings["tiled_ms"] = (time.perf_counter() - step_start) * 1000.0
     if tiled_boxes.size == 0:
@@ -623,13 +724,14 @@ def run_detector_pipeline(
         )
         timings["redetect_ms"] = (time.perf_counter() - step_start) * 1000.0
         timings["pipeline_ms"] = (time.perf_counter() - pipeline_start) * 1000.0
-        logger.info(
-            "%s full+tiled detections: full=%d filtered_full=%d tiled=0 merged=%d",
-            log_prefix,
-            full_total,
-            len(full_boxes),
-            len(final_boxes),
-        )
+        if is_enabled("vision_detector_debug", True):
+            logger.info(
+                "%s full+tiled detections: full=%d filtered_full=%d tiled=0 merged=%d",
+                log_prefix,
+                full_total,
+                len(full_boxes),
+                len(final_boxes),
+            )
         if return_timings:
             return final_boxes, timings
         return final_boxes
@@ -648,14 +750,15 @@ def run_detector_pipeline(
     )
     timings["redetect_ms"] = (time.perf_counter() - step_start) * 1000.0
     timings["pipeline_ms"] = (time.perf_counter() - pipeline_start) * 1000.0
-    logger.info(
-        "%s full+tiled detections: full=%d filtered_full=%d tiled=%d merged=%d",
-        log_prefix,
-        full_total,
-        len(full_boxes),
-        len(tiled_boxes),
-        len(final_boxes),
-    )
+    if is_enabled("vision_detector_debug", True):
+        logger.info(
+            "%s full+tiled detections: full=%d filtered_full=%d tiled=%d merged=%d",
+            log_prefix,
+            full_total,
+            len(full_boxes),
+            len(tiled_boxes),
+            len(final_boxes),
+        )
     if return_timings:
         return final_boxes, timings
     return final_boxes

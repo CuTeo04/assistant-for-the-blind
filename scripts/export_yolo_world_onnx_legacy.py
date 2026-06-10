@@ -8,6 +8,7 @@ YOLO_CONFIG_DIR = ROOT_DIR / ".cache" / "ultralytics"
 YOLO_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 os.environ["YOLO_CONFIG_DIR"] = str(YOLO_CONFIG_DIR)
 
+import torch
 from ultralytics import YOLOWorld
 
 if str(ROOT_DIR) not in sys.path:
@@ -26,20 +27,22 @@ def _normalize_labels(labels) -> list[str]:
         normalized.append(text)
         seen.add(text)
     return normalized
+
+
 def parse_args():
     vision_cfg = get_config()["vision"]
     parser = argparse.ArgumentParser(
-        description="Export YOLO-World ONNX using open-vocab labels from server_config.json",
+        description="Export YOLO-World ONNX using legacy torch.onnx exporter (dynamo=False).",
     )
     parser.add_argument(
         "--weights",
         default=str(vision_cfg.get("yolo_world_weights_path", "models/yolov8x-worldv2.pt")),
-        help="Input YOLO-World .pt weights path. Defaults to vision.yolo_world_weights_path in server_config.json.",
+        help="Input YOLO-World .pt weights path.",
     )
     parser.add_argument(
         "--output",
         default=str(vision_cfg["yolo_world_model_path"]),
-        help="Output ONNX path. Defaults to vision.yolo_world_model_path in server_config.json.",
+        help="Output ONNX path.",
     )
     parser.add_argument(
         "--imgsz",
@@ -48,7 +51,7 @@ def parse_args():
         help="Export image size.",
     )
     parser.add_argument("--batch", type=int, default=1, help="Static export batch size")
-    parser.add_argument("--opset", type=int, default=17, help="Optional ONNX opset version override")
+    parser.add_argument("--opset", type=int, default=17, help="ONNX opset version override")
     parser.add_argument("--device", default="cpu", help="Device used during export")
     parser.add_argument(
         "--dynamic",
@@ -79,19 +82,29 @@ def main():
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    model = YOLOWorld(str(weights_path))
-    model.set_classes(labels)
-    export_kwargs = {
-        "format": "onnx",
-        "imgsz": args.imgsz,
-        "batch": args.batch,
-        "dynamic": args.dynamic,
-        "simplify": args.simplify,
-        "device": args.device,
-    }
-    export_kwargs["opset"] = args.opset
+    original_export = torch.onnx.export
 
-    exported_path = Path(model.export(**export_kwargs))
+    def legacy_export(*export_args, **export_kwargs):
+        export_kwargs.setdefault("dynamo", False)
+        return original_export(*export_args, **export_kwargs)
+
+    torch.onnx.export = legacy_export
+    try:
+        model = YOLOWorld(str(weights_path))
+        model.set_classes(labels)
+        export_kwargs = {
+            "format": "onnx",
+            "imgsz": args.imgsz,
+            "batch": args.batch,
+            "dynamic": args.dynamic,
+            "simplify": args.simplify,
+            "device": args.device,
+            "opset": args.opset,
+        }
+
+        exported_path = Path(model.export(**export_kwargs))
+    finally:
+        torch.onnx.export = original_export
 
     if exported_path.resolve() != output_path:
         if output_path.exists():
@@ -99,7 +112,7 @@ def main():
         exported_path.replace(output_path)
 
     print(f"Embedded {len(labels)} labels into YOLO-World ONNX")
-    print(f"Exported ONNX model to: {output_path}")
+    print(f"Exported legacy ONNX model to: {output_path}")
 
 
 if __name__ == "__main__":

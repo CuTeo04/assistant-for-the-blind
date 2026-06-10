@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import torch
 
+from log_settings import is_enabled, print_if_enabled
 from vision.config import vision_config as vcfg
 from vision.detection.factory import create_detector_service
 from vision.detection.pipeline import merge_detection_records
@@ -53,12 +54,19 @@ def resize_keep_ratio(img, max_size: int):
     return cv2.resize(img, (int(w * scale), int(h * scale)))
 
 
-def _format_detection_boxes_for_log(boxes) -> str:
+def _format_detection_boxes_for_log(boxes, limit: int = 10) -> str:
     if boxes is None or len(boxes) == 0:
         return "[]"
 
+    sorted_boxes = sorted(
+        boxes,
+        key=lambda det: float(det.get("conf", 0.0)),
+        reverse=True,
+    )
+    display_boxes = sorted_boxes[:limit] if limit > 0 else sorted_boxes
+
     parts = []
-    for det in boxes:
+    for det in display_boxes:
         x1 = int(det["x1"])
         y1 = int(det["y1"])
         x2 = int(det["x2"])
@@ -69,6 +77,9 @@ def _format_detection_boxes_for_log(boxes) -> str:
         parts.append(
             f"{label}[{source}](conf={conf:.2f}, box=[{x1},{y1},{x2},{y2}])"
         )
+
+    if len(sorted_boxes) > len(display_boxes):
+        parts.append(f"... {len(sorted_boxes) - len(display_boxes)} more")
     return "[" + "; ".join(parts) + "]"
 
 
@@ -121,10 +132,10 @@ def init_models():
     device = torch.device(vcfg.DEVICE)
     torch.set_num_threads(vcfg.NUM_THREADS)
 
-    print(f"Dang tai detector chinh ({vcfg.YOLO_BACKEND})...")
+    print_if_enabled("startup", f"Dang tai detector chinh ({vcfg.YOLO_BACKEND})...")
     detector = create_detector_service()
 
-    print("Dang tai Depth Anything V2...")
+    print_if_enabled("startup", "Dang tai Depth Anything V2...")
     da_model = load_da2_model(vcfg.DA2_CONFIG, vcfg.DA2_CHECKPOINT, device)
 
     hands_full, hands_crop = init_mediapipe_hands()
@@ -152,7 +163,7 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         return detector._run_primary_detection(img, orig)
 
     def run_open_vocab():
-        if detector.open_vocab_backend is None or not vcfg.OPEN_VOCAB_ENABLED or not candidate_labels:
+        if detector._open_vocab_label_backend() is None or not vcfg.OPEN_VOCAB_ENABLED or not candidate_labels:
             return [], 0.0, {}
         return detector._run_open_vocab_detection(img, candidate_labels, orig)
 
@@ -169,6 +180,7 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
             "hand_crop_img": None,
             "hand_full_ms": 0.0,
             "focal_length": None,
+            "pixel_hand": None,
             "hand_center": None,
             "focal_ms": 0.0,
             "raw_depth_hand": None,
@@ -192,7 +204,7 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
 
         if hand_landmarks is not None:
             step_start = time.perf_counter()
-            focal_length, hand_center, _pixel_hand = compute_focal_length(
+            focal_length, hand_center, pixel_hand = compute_focal_length(
                 hand_landmarks,
                 hand_crop_img,
                 hand_origin,
@@ -201,6 +213,7 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
             )
             result["focal_ms"] = (time.perf_counter() - step_start) * 1000.0
             result["focal_length"] = focal_length
+            result["pixel_hand"] = pixel_hand
             result["hand_center"] = hand_center
             if focal_length is not None:
                 new_h, new_w = new_shape
@@ -259,7 +272,7 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
     timings["depth_calib_ms"] = depth_hand_result["depth_calib_ms"]
     timings["depth_calib_fallback_ms"] = 0.0
 
-    if open_vocab_records:
+    if open_vocab_records and is_enabled("vision_detector_debug", True):
         labels = sorted({record["label"] for record in open_vocab_records})
         logger.info(
             "YOLO-World extra detections outside YOLO labels: labels=%s count=%d merged_total=%d",
@@ -267,40 +280,43 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
             len(open_vocab_records),
             len(boxes),
         )
-    logger.info(
-        "Detector latency breakdown: total=%.1f ms | yolo=%.1f ms | yolo_world=%.1f ms | merge=%.1f ms | overhead=%.1f ms",
-        timings["detector_total_ms"],
-        timings["yolo_ms"],
-        timings["yolo_world_ms"],
-        timings["detector_merge_ms"],
-        timings["detector_overhead_ms"],
-    )
-    logger.info(
-        "Detections after detector pipeline%s%s merge: %s",
-        "+tiled" if vcfg.TILED_ENABLED else "",
-        "+YOLO-World" if vcfg.OPEN_VOCAB_ENABLED and detector.open_vocab_backend is not None else "",
-        _format_detection_boxes_for_log(boxes),
-    )
+    if is_enabled("vision_detector_debug", True):
+        logger.info(
+            "Detector latency breakdown: total=%.1f ms | yolo=%.1f ms | yolo_world=%.1f ms | merge=%.1f ms | overhead=%.1f ms",
+            timings["detector_total_ms"],
+            timings["yolo_ms"],
+            timings["yolo_world_ms"],
+            timings["detector_merge_ms"],
+            timings["detector_overhead_ms"],
+        )
+        logger.info(
+            "Detections after detector pipeline%s%s merge: %s",
+            "+tiled" if vcfg.TILED_ENABLED else "",
+            "+YOLO-World" if vcfg.OPEN_VOCAB_ENABLED and detector._open_vocab_label_backend() is not None else "",
+            _format_detection_boxes_for_log(boxes),
+        )
 
     hand_landmarks = depth_hand_result["hand_landmarks"]
     hand_origin = depth_hand_result["hand_origin"]
     hand_crop_img = depth_hand_result["hand_crop_img"]
     focal_length = depth_hand_result["focal_length"]
+    pixel_hand = depth_hand_result["pixel_hand"]
     hand_center = depth_hand_result["hand_center"]
     timings["focal_ms"] = depth_hand_result["focal_ms"]
+    focal_source = "full_image"
 
     if hand_landmarks is None:
         hand_landmarks, hand_origin, hand_crop_img, crop_time_s = detect_hand_landmarks_from_boxes(
             img,
             boxes,
-            detector.primary_backend,
+            detector._primary_label_backend(),
             hands_crop,
             conf_threshold=vcfg.CONF_THRESHOLD,
         )
         timings["hand_fallback_ms"] = crop_time_s * 1000.0
         if hand_landmarks is not None:
             focal_step_start = time.perf_counter()
-            focal_length, hand_center, _pixel_hand = compute_focal_length(
+            focal_length, hand_center, pixel_hand = compute_focal_length(
                 hand_landmarks,
                 hand_crop_img,
                 hand_origin,
@@ -309,12 +325,24 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
             )
             timings["focal_fallback_ms"] = (time.perf_counter() - focal_step_start) * 1000.0
             timings["focal_ms"] += timings["focal_fallback_ms"]
+            focal_source = "person_crop"
 
     timings["hand_ms"] = timings["hand_full_ms"] + timings["hand_fallback_ms"]
 
     if hand_landmarks is None:
         _finalize_task2_timings(timings, total_start)
         return "Khong detect duoc tay trong anh.", timings, ""
+
+    if is_enabled("hand_debug", True):
+        logger.info(
+            "Hand focal calibration | source=%s | focal_px=%s | pixel_hand=%s | hand_center=%s | known_distance_cm=%.1f | real_hand_length_cm=%.1f",
+            focal_source,
+            f"{focal_length:.2f}" if focal_length is not None else "invalid",
+            f"{pixel_hand:.2f}" if pixel_hand is not None else "n/a",
+            hand_center,
+            vcfg.KNOWN_DISTANCE_CM,
+            vcfg.REAL_HAND_LENGTH_CM,
+        )
 
     if focal_length is None:
         _finalize_task2_timings(timings, total_start)
@@ -360,11 +388,12 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         object_data.append((det_box, label, depth_m, real_w_cm, real_h_cm))
 
     timings["calib_objects_ms"] = (time.perf_counter() - step_start) * 1000.0
-    logger.info(
-        "YOLO detections after conf>=%.2f and depth calibration: %s",
-        vcfg.CONF_THRESHOLD,
-        _format_object_data_for_log(object_data),
-    )
+    if is_enabled("vision_object_debug", True):
+        logger.info(
+            "YOLO detections after conf>=%.2f and depth calibration: %s",
+            vcfg.CONF_THRESHOLD,
+            _format_object_data_for_log(object_data),
+        )
 
     step_start = time.perf_counter()
     valid_objects = filter_objects(
@@ -378,13 +407,14 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         max_objects=vcfg.MAX_OBJECTS,
     )
     timings["filter_ms"] = (time.perf_counter() - step_start) * 1000.0
-    logger.info(
-        "Valid objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
-        vcfg.MIN_DEPTH_M,
-        vcfg.MAX_DEPTH_M,
-        vcfg.MAX_OBJECTS,
-        _format_valid_objects_for_log(valid_objects),
-    )
+    if is_enabled("vision_object_debug", True):
+        logger.info(
+            "Valid objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
+            vcfg.MIN_DEPTH_M,
+            vcfg.MAX_DEPTH_M,
+            vcfg.MAX_OBJECTS,
+            _format_valid_objects_for_log(valid_objects),
+        )
     if not valid_objects:
         timings["scene_ms"] = 0.0
         timings["distance_desc_ms"] = 0.0

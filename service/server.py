@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import socket
 import tempfile
 import time
 
@@ -8,6 +9,7 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
 
 from app_config import get_config
+from log_settings import configure_logging, is_enabled
 from service.vision_pipeline import describe_image_with_models, init_models
 from response.answer_generator import (
     answer_from_api,
@@ -18,17 +20,8 @@ from response.config import tts_config as tcfg
 from STT.command_processor import process_voice_command_api
 
 _cfg = get_config()["server"]
-LOG_ENABLED = bool(_cfg.get("log_enabled", True))
-
-logging.basicConfig(
-    level=logging.INFO if LOG_ENABLED else logging.WARNING,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-)
+configure_logging()
 logger = logging.getLogger("voice_server")
-
-if not LOG_ENABLED:
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("openai").setLevel(logging.WARNING)
 
 app = FastAPI(title="Voice Command Server")
 
@@ -37,6 +30,35 @@ da_model = None
 hands_full = None
 hands_crop = None
 response_client = None
+
+
+def _discover_server_urls(host: str, port: int) -> list[str]:
+    urls: list[str] = []
+
+    def add_url(candidate_host: str):
+        url = f"http://{candidate_host}:{port}"
+        if url not in urls:
+            urls.append(url)
+
+    bind_host = str(host).strip()
+    if bind_host in {"0.0.0.0", "::"}:
+        add_url("127.0.0.1")
+        add_url("localhost")
+        try:
+            hostname = socket.gethostname()
+            for family, *_rest, sockaddr in socket.getaddrinfo(hostname, None, socket.AF_INET):
+                if family != socket.AF_INET:
+                    continue
+                ip = sockaddr[0]
+                if ip.startswith("127."):
+                    continue
+                add_url(ip)
+        except OSError:
+            logger.warning("Could not enumerate LAN IP addresses for startup log", exc_info=True)
+    else:
+        add_url(bind_host)
+
+    return urls
 
 
 def get_response_client():
@@ -49,14 +71,20 @@ def get_response_client():
 @app.on_event("startup")
 def load_models():
     global detector, da_model, hands_full, hands_crop
-    logger.info("Loading vision models...")
+    if is_enabled("startup", True):
+        logger.info("Loading vision models...")
     detector, da_model, hands_full, hands_crop = init_models()
-    logger.info("Vision models ready")
+    if is_enabled("startup", True):
+        logger.info("Vision models ready")
+    server_urls = _discover_server_urls(_cfg["host"], int(_cfg["port"]))
+    if is_enabled("startup", True):
+        logger.info("Server URLs: %s", " | ".join(server_urls))
 
 
 @app.get("/health")
 def health_check():
-    logger.info("Health check")
+    if is_enabled("healthcheck"):
+        logger.info("Health check")
     return {"status": "ok"}
 
 
@@ -117,57 +145,58 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             whisper_ms = api_steps.get("whisper_s", 0.0) * 1000.0
             llm_ms = api_steps.get("llm_s", 0.0) * 1000.0
 
-        logger.info(
-            "Task1 STT+LLM | api=%s | transcript=%s | total=%.1f ms | whisper=%.1f ms | llm=%.1f ms",
-            api_string,
-            transcript,
-            api_latency,
-            whisper_ms,
-            llm_ms,
-        )
+        if is_enabled("request_summary", True):
+            logger.info(
+                "Task1 STT+LLM | api=%s | transcript=%s | total=%.1f ms | whisper=%.1f ms | llm=%.1f ms",
+                api_string,
+                transcript,
+                api_latency,
+                whisper_ms,
+                llm_ms,
+            )
 
-        logger.info(
-            "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f scene=%.1f distance_desc=%.1f | detector_substeps(ms): yolo_full=%.1f yolo_filter=%.1f yolo_tiled=%.1f yolo_nms=%.1f yolo_redetect=%.1f yw_full=%.1f yw_filter=%.1f yw_tiled=%.1f yw_nms=%.1f yw_redetect=%.1f merge=%.1f detector_overhead=%.1f | raw=%s",
-            vision_latency,
-            timings.get("total_ms", 0.0),
-            timings.get("accounted_ms", 0.0),
-            timings.get("unaccounted_ms", 0.0),
-            timings.get("load_resize_ms", 0.0),
-            timings.get("detector_total_ms", timings.get("yolo_ms", 0.0)),
-            timings.get("yolo_ms", 0.0),
-            timings.get("yolo_world_ms", 0.0),
-            timings.get("hand_ms", 0.0),
-            timings.get("focal_ms", 0.0),
-            timings.get("depth_ms", 0.0),
-            timings.get("calib_objects_ms", 0.0),
-            timings.get("filter_ms", 0.0),
-            timings.get("scene_ms", 0.0),
-            timings.get("distance_desc_ms", 0.0),
-            timings.get("yolo_full_infer_ms", 0.0),
-            timings.get("yolo_full_filter_ms", 0.0),
-            timings.get("yolo_tiled_ms", 0.0),
-            timings.get("yolo_nms_ms", 0.0),
-            timings.get("yolo_redetect_ms", 0.0),
-            timings.get("yolo_world_full_infer_ms", 0.0),
-            timings.get("yolo_world_full_filter_ms", 0.0),
-            timings.get("yolo_world_tiled_ms", 0.0),
-            timings.get("yolo_world_nms_ms", 0.0),
-            timings.get("yolo_world_redetect_ms", 0.0),
-            timings.get("detector_merge_ms", 0.0),
-            timings.get("detector_overhead_ms", 0.0),
-            description,
-        )
-        logger.info(
-            "Parallel STT+Vision wall=%.1f ms | expected~max(task1,task2)",
-            parallel_wall_ms,
-        )
-        logger.info("Distance matrix (camera -> objects): %s", distance_desc)
+            logger.info(
+                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f scene=%.1f distance_desc=%.1f | detector_substeps(ms): yolo_full=%.1f yolo_filter=%.1f yolo_tiled=%.1f yolo_nms=%.1f yolo_redetect=%.1f yw_full=%.1f yw_filter=%.1f yw_tiled=%.1f yw_nms=%.1f yw_redetect=%.1f merge=%.1f detector_overhead=%.1f | raw=%s",
+                vision_latency,
+                timings.get("total_ms", 0.0),
+                timings.get("accounted_ms", 0.0),
+                timings.get("unaccounted_ms", 0.0),
+                timings.get("load_resize_ms", 0.0),
+                timings.get("detector_total_ms", timings.get("yolo_ms", 0.0)),
+                timings.get("yolo_ms", 0.0),
+                timings.get("yolo_world_ms", 0.0),
+                timings.get("hand_ms", 0.0),
+                timings.get("focal_ms", 0.0),
+                timings.get("depth_ms", 0.0),
+                timings.get("calib_objects_ms", 0.0),
+                timings.get("filter_ms", 0.0),
+                timings.get("scene_ms", 0.0),
+                timings.get("distance_desc_ms", 0.0),
+                timings.get("yolo_full_infer_ms", 0.0),
+                timings.get("yolo_full_filter_ms", 0.0),
+                timings.get("yolo_tiled_ms", 0.0),
+                timings.get("yolo_nms_ms", 0.0),
+                timings.get("yolo_redetect_ms", 0.0),
+                timings.get("yolo_world_full_infer_ms", 0.0),
+                timings.get("yolo_world_full_filter_ms", 0.0),
+                timings.get("yolo_world_tiled_ms", 0.0),
+                timings.get("yolo_world_nms_ms", 0.0),
+                timings.get("yolo_world_redetect_ms", 0.0),
+                timings.get("detector_merge_ms", 0.0),
+                timings.get("detector_overhead_ms", 0.0),
+                description,
+            )
+            logger.info(
+                "Parallel STT+Vision wall=%.1f ms | expected~max(task1,task2)",
+                parallel_wall_ms,
+            )
+            logger.info("Distance matrix (camera -> objects): %s", distance_desc)
         selected_description = select_raw_description_for_api(
             api_string,
             distance_desc,
             description,
         )
-        if selected_description != description:
+        if selected_description != description and is_enabled("request_summary", True):
             logger.info(
                 "Selected raw description for api=%s | raw=%s",
                 api_string,
@@ -197,14 +226,16 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
 
         response = {"api": api_string, "text": smooth_text}
         total_ms = (time.perf_counter() - req_start) * 1000.0
-        logger.info("Task3 Response | total=%.1f ms", response_latency)
-        logger.info("Request total latency: %.1f ms", total_ms)
+        if is_enabled("request_summary", True):
+            logger.info("Task3 Response | total=%.1f ms", response_latency)
+            logger.info("Request total latency: %.1f ms", total_ms)
         return response
 
     except Exception as exc:
         logger.exception("Server error while processing audio: %s", exc)
         total_ms = (time.perf_counter() - req_start) * 1000.0
-        logger.info("Request total latency (error): %.1f ms", total_ms)
+        if is_enabled("request_summary", True):
+            logger.info("Request total latency (error): %.1f ms", total_ms)
         return JSONResponse(status_code=500, content={"error": "Internal server error"})
 
     finally:
@@ -225,4 +256,5 @@ if __name__ == "__main__":
         port=int(_cfg["port"]),
         ssl_certfile=ssl_certfile,
         ssl_keyfile=ssl_keyfile,
+        access_log=is_enabled("uvicorn_access", True),
     )

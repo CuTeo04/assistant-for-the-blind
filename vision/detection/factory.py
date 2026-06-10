@@ -29,10 +29,42 @@ def create_primary_backend(model_path: str | None = None, backend: str | None = 
     if not os.path.exists(model_path):
         raise FileNotFoundError(f"YOLO model not found at: {model_path}")
 
+    if backend_name == "onnx":
+        return OnnxRuntimeDetectorBackend(
+            model_path=model_path,
+            source_name="yolo",
+            backend_name=backend_name,
+            execution_provider=getattr(cfg, "YOLO_EXECUTION_PROVIDER", "cpu"),
+            intra_op_num_threads=getattr(cfg, "YOLO_ONNX_INTRA_OP_THREADS", None),
+            inter_op_num_threads=getattr(cfg, "YOLO_ONNX_INTER_OP_THREADS", None),
+        )
+
     return UltralyticsDetectorBackend(
         model_path=model_path,
         source_name="yolo",
         backend_name=backend_name,
+    )
+
+
+def create_primary_full_backend():
+    return OnnxRuntimeDetectorBackend(
+        model_path=cfg.YOLO_FULL_MODEL_PATH,
+        source_name="yolo_full",
+        backend_name=_normalize_backend_name(getattr(cfg, "YOLO_BACKEND", "onnx")),
+        execution_provider=cfg.YOLO_FULL_EXECUTION_PROVIDER,
+        intra_op_num_threads=getattr(cfg, "YOLO_FULL_ONNX_INTRA_OP_THREADS", None),
+        inter_op_num_threads=getattr(cfg, "YOLO_FULL_ONNX_INTER_OP_THREADS", None),
+    )
+
+
+def create_primary_tile_backend():
+    return OnnxRuntimeDetectorBackend(
+        model_path=cfg.YOLO_TILE_MODEL_PATH,
+        source_name="yolo_tile",
+        backend_name=_normalize_backend_name(getattr(cfg, "YOLO_BACKEND", "onnx")),
+        execution_provider=cfg.YOLO_TILE_EXECUTION_PROVIDER,
+        intra_op_num_threads=getattr(cfg, "YOLO_TILE_ONNX_INTRA_OP_THREADS", None),
+        inter_op_num_threads=getattr(cfg, "YOLO_TILE_ONNX_INTER_OP_THREADS", None),
     )
 
 
@@ -46,6 +78,8 @@ def create_open_vocab_backend(model_path: str | None = None, backend: str | None
         backend = OnnxRuntimeDetectorBackend(
             model_path=model_path,
             source_name="yolo_world",
+            intra_op_num_threads=getattr(cfg, "YOLO_WORLD_ONNX_INTRA_OP_THREADS", None),
+            inter_op_num_threads=getattr(cfg, "YOLO_WORLD_ONNX_INTER_OP_THREADS", None),
             backend_name=backend_name,
             execution_provider=getattr(cfg, "YOLO_WORLD_EXECUTION_PROVIDER", "cpu"),
         )
@@ -86,8 +120,55 @@ def create_open_vocab_backend(model_path: str | None = None, backend: str | None
     )
 
 
+def create_open_vocab_full_backend():
+    return OnnxRuntimeDetectorBackend(
+        model_path=cfg.YOLO_WORLD_FULL_MODEL_PATH,
+        source_name="yolo_world_full",
+        intra_op_num_threads=getattr(cfg, "YOLO_WORLD_FULL_ONNX_INTRA_OP_THREADS", None),
+        inter_op_num_threads=getattr(cfg, "YOLO_WORLD_FULL_ONNX_INTER_OP_THREADS", None),
+        backend_name=_normalize_backend_name(getattr(cfg, "YOLO_WORLD_BACKEND", "onnx")),
+        execution_provider=cfg.YOLO_WORLD_FULL_EXECUTION_PROVIDER,
+    )
+
+
+def create_open_vocab_tile_backend():
+    return OnnxRuntimeDetectorBackend(
+        intra_op_num_threads=getattr(cfg, "YOLO_WORLD_TILE_ONNX_INTRA_OP_THREADS", None),
+        inter_op_num_threads=getattr(cfg, "YOLO_WORLD_TILE_ONNX_INTER_OP_THREADS", None),
+        model_path=cfg.YOLO_WORLD_TILE_MODEL_PATH,
+        source_name="yolo_world_tile",
+        backend_name=_normalize_backend_name(getattr(cfg, "YOLO_WORLD_BACKEND", "onnx")),
+        execution_provider=cfg.YOLO_WORLD_TILE_EXECUTION_PROVIDER,
+    )
+
+
 def create_detector_service(primary_backend=None, open_vocab_backend=None) -> VisionDetectorService:
-    primary_backend = primary_backend or create_primary_backend()
-    if open_vocab_backend is None and cfg.OPEN_VOCAB_ENABLED:
-        open_vocab_backend = create_open_vocab_backend()
-    return VisionDetectorService(primary_backend, open_vocab_backend)
+    if cfg.YOLO_SPLIT_WORKERS_ENABLED:
+        primary_backend = None
+        primary_full_backend = create_primary_full_backend()
+        primary_tile_backend = create_primary_tile_backend()
+    else:
+        primary_backend = primary_backend or create_primary_backend()
+        primary_full_backend = None
+        primary_tile_backend = None
+
+    if cfg.OPEN_VOCAB_ENABLED and cfg.OPEN_VOCAB_SPLIT_WORKERS_ENABLED:
+        open_vocab_backend = None
+        open_vocab_full_backend = create_open_vocab_full_backend()
+        open_vocab_tile_backend = create_open_vocab_tile_backend()
+    elif cfg.OPEN_VOCAB_ENABLED:
+        open_vocab_backend = open_vocab_backend or create_open_vocab_backend()
+        open_vocab_full_backend = None
+        open_vocab_tile_backend = None
+    else:
+        open_vocab_full_backend = None
+        open_vocab_tile_backend = None
+
+    return VisionDetectorService(
+        primary_backend,
+        open_vocab_backend,
+        primary_full_backend=primary_full_backend,
+        primary_tile_backend=primary_tile_backend,
+        open_vocab_full_backend=open_vocab_full_backend,
+        open_vocab_tile_backend=open_vocab_tile_backend,
+    )

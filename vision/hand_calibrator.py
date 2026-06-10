@@ -4,6 +4,8 @@ import time
 import cv2
 import mediapipe as mp
 
+from log_settings import print_if_enabled
+
 
 def init_mediapipe_hands():
     mp_hands = mp.solutions.hands
@@ -27,10 +29,10 @@ def detect_hand_landmarks_full_image(img_bgr, hands_full):
     full_time = time.perf_counter() - start
 
     if result.multi_hand_landmarks:
-        print(f"MediaPipe detect tay tren toan anh ({full_time:.3f}s)")
+        print_if_enabled("hand_debug", f"MediaPipe detect tay tren toan anh ({full_time:.3f}s)")
         return result.multi_hand_landmarks[0], (0, 0), img_bgr, full_time
 
-    print(f"Khong thay tay tren toan anh ({full_time:.3f}s), thu crop person...")
+    print_if_enabled("hand_debug", f"Khong thay tay tren toan anh ({full_time:.3f}s), thu crop person...")
     return None, None, None, full_time
 
 
@@ -81,7 +83,7 @@ def detect_hand_landmarks_from_boxes(
         crop_time = time.perf_counter() - start
 
         if result.multi_hand_landmarks:
-            print(f"MediaPipe detect tay trong crop ({crop_time:.3f}s)")
+            print_if_enabled("hand_debug", f"MediaPipe detect tay trong crop ({crop_time:.3f}s)")
             return result.multi_hand_landmarks[0], (crop_x1, crop_y1), hand_crop, crop_time
 
     return None, None, None, 0.0

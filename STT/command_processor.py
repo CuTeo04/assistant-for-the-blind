@@ -2,6 +2,7 @@ import time
 
 import re
 
+from log_settings import print_if_enabled
 from openai import OpenAI
 
 from .config import voice_config as cfg
@@ -88,7 +89,7 @@ def normalize_api_output(raw_text: str) -> str:
 
 def execute_command(api_string: str):
     response = format_command_response(api_string)
-    print(response)
+    print_if_enabled("stt_debug", response)
 
 
 def format_command_response(api_string: str) -> str:
@@ -111,7 +112,7 @@ def process_voice_command(audio_path: str, config=cfg):
     try:
         client = init_client(config.GROQ_API_KEY, config.GROQ_BASE_URL)
 
-        print("Dang gui audio len Whisper...")
+        print_if_enabled("stt_debug", "Dang gui audio len Whisper...")
         text, whisper_latency = transcribe_audio(
             client,
             audio_path,
@@ -121,13 +122,13 @@ def process_voice_command(audio_path: str, config=cfg):
         )
 
         if not text or len(text) < 3:
-            print("Khong nghe ro hoac chi co tieng on.")
+            print_if_enabled("stt_debug", "Khong nghe ro hoac chi co tieng on.")
             return
 
-        print(f"Nghe duoc: \"{text}\"")
-        print(f"Whisper latency: {whisper_latency:.3f} giay\n")
+        print_if_enabled("stt_debug", f"Nghe duoc: \"{text}\"")
+        print_if_enabled("stt_debug", f"Whisper latency: {whisper_latency:.3f} giay\n")
 
-        print("Dang phan loai lenh bang LLM...")
+        print_if_enabled("stt_debug", "Dang phan loai lenh bang LLM...")
         llm_text, llm_latency = classify_command(
             client,
             text,
@@ -141,13 +142,13 @@ def process_voice_command(audio_path: str, config=cfg):
         if api_string and "KHONG_LIEN_QUAN" in api_string.upper():
             api_string = "KHONG_XAC_DINH"
 
-        print(f"LENH API: {api_string}")
-        print(f"LLM latency: {llm_latency:.3f} giay")
+        print_if_enabled("stt_debug", f"LENH API: {api_string}")
+        print_if_enabled("stt_debug", f"LLM latency: {llm_latency:.3f} giay")
 
         execute_command(api_string)
 
     except Exception as exc:
-        print(f"Loi xu ly API: {exc}")
+        print_if_enabled("stt_debug", f"Loi xu ly API: {exc}")
 
 
 def process_voice_command_return(audio_path: str, config=cfg):

@@ -10,6 +10,7 @@ KNOWN_DISTANCE_CM = _cfg["known_distance_cm"]
 MAX_SIZE = _cfg["max_size"]
 DEVICE = _cfg["device"]
 NUM_THREADS = _cfg["num_threads"]
+CPU_GENERAL_THREADS = _cfg.get("cpu_general_threads", 4)
 INPUT_SIZE_DEPTH = _cfg["input_size_depth"]
 
 YOLO_MODEL_PATH = os.path.join(ROOT_DIR, _cfg["yolo_model_path"])
@@ -18,6 +19,28 @@ YOLO_ONNX_PATH = os.path.join(
     _cfg.get("yolo_onnx_path", "models/YOLO11s.onnx"),
 )
 YOLO_BACKEND = str(_cfg.get("yolo_backend", "ultralytics")).strip().lower()
+YOLO_EXECUTION_PROVIDER = str(_cfg.get("yolo_execution_provider", "cpu")).strip().lower()
+YOLO_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_onnx_intra_op_threads")
+YOLO_ONNX_INTER_OP_THREADS = _cfg.get("yolo_onnx_inter_op_threads")
+YOLO_SPLIT_WORKERS_ENABLED = bool(_cfg.get("yolo_split_workers_enabled", False))
+YOLO_FULL_MODEL_PATH = os.path.join(
+    ROOT_DIR,
+    _cfg.get("yolo_full_model_path", _cfg.get("yolo_onnx_path", "models/YOLO11s.onnx")),
+)
+YOLO_FULL_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_full_onnx_intra_op_threads")
+YOLO_FULL_ONNX_INTER_OP_THREADS = _cfg.get("yolo_full_onnx_inter_op_threads")
+YOLO_TILE_MODEL_PATH = os.path.join(
+    ROOT_DIR,
+    _cfg.get("yolo_tile_model_path", _cfg.get("yolo_onnx_path", "models/YOLO11s.onnx")),
+)
+YOLO_TILE_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_tile_onnx_intra_op_threads")
+YOLO_TILE_ONNX_INTER_OP_THREADS = _cfg.get("yolo_tile_onnx_inter_op_threads")
+YOLO_FULL_EXECUTION_PROVIDER = str(
+    _cfg.get("yolo_full_execution_provider", YOLO_EXECUTION_PROVIDER)
+).strip().lower()
+YOLO_TILE_EXECUTION_PROVIDER = str(
+    _cfg.get("yolo_tile_execution_provider", YOLO_EXECUTION_PROVIDER)
+).strip().lower()
 DA2_CHECKPOINT = os.path.join(ROOT_DIR, _cfg["da2_checkpoint"])
 DA2_ONNX_PATH = os.path.join(ROOT_DIR, _cfg["da2_onnx_path"])
 DA2_USE_ONNX = _cfg["da2_use_onnx"]
@@ -33,10 +56,13 @@ MAX_OBJECTS = _cfg["max_objects"]
 
 YOLO_DEVICE = _cfg.get("yolo_device", DEVICE)
 YOLO_IMGSZ = int(_cfg.get("yolo_imgsz", 960))
+YOLO_TILE_IMGSZ = int(_cfg.get("yolo_tile_imgsz", YOLO_IMGSZ))
 YOLO_PREDICT_CONF = _cfg.get("yolo_predict_conf", 0.25)
 TILED_ENABLED = bool(_cfg.get("tiled_enabled", False))
 TILE_SIZE = int(_cfg.get("tile_size", 960))
 TILE_OVERLAP = float(_cfg.get("tile_overlap", 0.25))
+TILE_MODE = str(_cfg.get("tile_mode", "center_batch")).strip().lower()
+CENTER_TILE_COUNT = int(_cfg.get("center_tile_count", 2))
 TILE_CONF_THRESHOLD = float(_cfg.get("tile_conf_threshold", YOLO_PREDICT_CONF))
 NMS_IOU_THRESHOLD = float(_cfg.get("nms_iou_threshold", 0.50))
 REDETECT_ENABLED = bool(_cfg.get("redetect_enabled", False))
@@ -63,6 +89,27 @@ YOLO_WORLD_WEIGHTS_PATH = os.path.join(
 )
 YOLO_WORLD_BACKEND = str(_cfg.get("yolo_world_backend", "ultralytics")).strip().lower()
 YOLO_WORLD_EXECUTION_PROVIDER = str(_cfg.get("yolo_world_execution_provider", "cpu")).strip().lower()
+YOLO_WORLD_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_world_onnx_intra_op_threads")
+YOLO_WORLD_ONNX_INTER_OP_THREADS = _cfg.get("yolo_world_onnx_inter_op_threads")
+OPEN_VOCAB_SPLIT_WORKERS_ENABLED = bool(_cfg.get("open_vocab_split_workers_enabled", False))
+YOLO_WORLD_FULL_MODEL_PATH = os.path.join(
+    ROOT_DIR,
+    _cfg.get("yolo_world_full_model_path", _cfg.get("yolo_world_model_path", "models/yolov8x-worldv2.onnx")),
+)
+YOLO_WORLD_FULL_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_world_full_onnx_intra_op_threads")
+YOLO_WORLD_FULL_ONNX_INTER_OP_THREADS = _cfg.get("yolo_world_full_onnx_inter_op_threads")
+YOLO_WORLD_TILE_MODEL_PATH = os.path.join(
+    ROOT_DIR,
+    _cfg.get("yolo_world_tile_model_path", _cfg.get("yolo_world_model_path", "models/yolov8x-worldv2.onnx")),
+)
+YOLO_WORLD_TILE_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_world_tile_onnx_intra_op_threads")
+YOLO_WORLD_TILE_ONNX_INTER_OP_THREADS = _cfg.get("yolo_world_tile_onnx_inter_op_threads")
+YOLO_WORLD_FULL_EXECUTION_PROVIDER = str(
+    _cfg.get("yolo_world_full_execution_provider", YOLO_WORLD_EXECUTION_PROVIDER)
+).strip().lower()
+YOLO_WORLD_TILE_EXECUTION_PROVIDER = str(
+    _cfg.get("yolo_world_tile_execution_provider", YOLO_WORLD_EXECUTION_PROVIDER)
+).strip().lower()
 OPEN_VOCAB_EXTRA_CLASSES = [
     str(label).strip().lower()
     for label in _cfg.get(
@@ -79,5 +126,10 @@ OPEN_VOCAB_EXCLUDE_LABELS = {
 OPEN_VOCAB_CONF_THRESHOLD = float(_cfg.get("open_vocab_conf_threshold", 0.20))
 OPEN_VOCAB_IOU_THRESHOLD = float(_cfg.get("open_vocab_iou_threshold", NMS_IOU_THRESHOLD))
 OPEN_VOCAB_DEVICE = _cfg.get("open_vocab_device", YOLO_DEVICE)
+OPEN_VOCAB_TILE_IMGSZ = int(_cfg.get("open_vocab_tile_imgsz", YOLO_TILE_IMGSZ))
 OPEN_VOCAB_TILED_ENABLED = bool(_cfg.get("open_vocab_tiled_enabled", False))
+OPEN_VOCAB_TILE_SIZE = int(_cfg.get("open_vocab_tile_size", TILE_SIZE))
+OPEN_VOCAB_TILE_OVERLAP = float(_cfg.get("open_vocab_tile_overlap", TILE_OVERLAP))
+OPEN_VOCAB_TILE_MODE = str(_cfg.get("open_vocab_tile_mode", TILE_MODE)).strip().lower()
+OPEN_VOCAB_CENTER_TILE_COUNT = int(_cfg.get("open_vocab_center_tile_count", CENTER_TILE_COUNT))
 OPEN_VOCAB_REDETECT_ENABLED = bool(_cfg.get("open_vocab_redetect_enabled", False))

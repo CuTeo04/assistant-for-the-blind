@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import logging
 import os
+import time
 from abc import ABC, abstractmethod
 
 import cv2
@@ -195,31 +196,12 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
         self.model_path = model_path
         self.execution_provider = execution_provider
         self.providers = self._resolve_providers(execution_provider)
-        session_options = self._build_session_options(
+        self.preferred_providers = list(self.providers)
+        self.session_options = self._build_session_options(
             intra_op_num_threads,
             inter_op_num_threads,
         )
-        try:
-            self.session = ort.InferenceSession(
-                model_path,
-                sess_options=session_options,
-                providers=self.providers,
-            )
-        except Exception:
-            if "CPUExecutionProvider" not in self.providers or self.providers == ["CPUExecutionProvider"]:
-                raise
-            logger.warning(
-                "%s accelerator session init failed for %s; fallback to CPUExecutionProvider",
-                self.source_name,
-                self.model_path,
-                exc_info=True,
-            )
-            self.providers = ["CPUExecutionProvider"]
-            self.session = ort.InferenceSession(
-                model_path,
-                sess_options=session_options,
-                providers=self.providers,
-            )
+        self.session = self._create_session_with_retry(reason="session_init")
         self.input_name = self.session.get_inputs()[0].name
         self.output_names = [output.name for output in self.session.get_outputs()]
         self.names = self._load_names()
@@ -232,6 +214,42 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
             self.input_hw,
             self.input_batch,
         )
+
+    def _uses_accelerator(self) -> bool:
+        return any(provider != "CPUExecutionProvider" for provider in self.preferred_providers)
+
+    def _create_session_with_retry(self, reason: str):
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self.providers = list(self.preferred_providers)
+                return ort.InferenceSession(
+                    self.model_path,
+                    sess_options=self.session_options,
+                    providers=self.providers,
+                )
+            except Exception:
+                if not self._uses_accelerator():
+                    raise
+                logger.warning(
+                    "%s accelerator session failed for %s during %s; retrying on the same providers | attempt=%d providers=%s",
+                    self.source_name,
+                    self.model_path,
+                    reason,
+                    attempt,
+                    self.preferred_providers,
+                    exc_info=True,
+                )
+                time.sleep(0.5)
+
+    def _reload_session_with_retry(self, reason: str) -> None:
+        self.session = self._create_session_with_retry(reason=reason)
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_names = [output.name for output in self.session.get_outputs()]
+        self.names = self._load_names()
+        self.input_hw = self._load_input_hw()
+        self.input_batch = self._load_input_batch()
 
     def _build_session_options(
         self,
@@ -370,7 +388,25 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
             tensors.append(np.ascontiguousarray(tensor, dtype=np.float32) / 255.0)
         batch_tensor = np.stack(tensors, axis=0)
 
-        outputs = self.session.run(self.output_names, {self.input_name: batch_tensor})
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                outputs = self.session.run(self.output_names, {self.input_name: batch_tensor})
+                break
+            except Exception:
+                if not self._uses_accelerator():
+                    raise
+                logger.warning(
+                    "%s accelerator inference failed for %s; rebuilding same providers and retrying forever | attempt=%d providers=%s",
+                    self.source_name,
+                    self.model_path,
+                    attempt,
+                    self.preferred_providers,
+                    exc_info=True,
+                )
+                time.sleep(0.5)
+                self._reload_session_with_retry(reason="inference_retry")
         predictions = torch.from_numpy(outputs[0] if isinstance(outputs, list) else outputs)
         detections_batch = non_max_suppression(
             predictions,

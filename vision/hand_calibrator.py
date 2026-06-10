@@ -121,6 +121,15 @@ def compute_focal_length(
     known_distance_cm: float,
     real_hand_length_cm: float,
 ):
+    hand_center, pixel_hand = compute_hand_reference(landmarks, crop_img, origin)
+    if pixel_hand < 5:
+        return None, None, pixel_hand
+
+    focal_length = (pixel_hand * known_distance_cm) / real_hand_length_cm
+    return focal_length, hand_center, pixel_hand
+
+
+def compute_hand_reference(landmarks, crop_img, origin):
     ch, cw = crop_img.shape[:2]
     ox, oy = origin
 
@@ -133,9 +142,5 @@ def compute_focal_length(
     y17 = int(p17.y * ch) + oy
 
     pixel_hand = math.sqrt((x5 - x17) ** 2 + (y5 - y17) ** 2)
-    if pixel_hand < 5:
-        return None, None, pixel_hand
-
     hand_center = ((x5 + x17) // 2, (y5 + y17) // 2)
-    focal_length = (pixel_hand * known_distance_cm) / real_hand_length_cm
-    return focal_length, hand_center, pixel_hand
+    return hand_center, pixel_hand

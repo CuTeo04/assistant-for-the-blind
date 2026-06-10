@@ -7,6 +7,7 @@ _cfg = get_config()["vision"]
 
 REAL_HAND_LENGTH_CM = _cfg["real_hand_length_cm"]
 KNOWN_DISTANCE_CM = _cfg["known_distance_cm"]
+FIXED_FOCAL_LENGTH_PX = float(_cfg.get("fixed_focal_length_px", 800.0))
 MAX_SIZE = _cfg["max_size"]
 DEVICE = _cfg["device"]
 NUM_THREADS = _cfg["num_threads"]

@@ -10,13 +10,7 @@ from log_settings import is_enabled, print_if_enabled
 from vision.config import vision_config as vcfg
 from vision.detection.factory import create_detector_service
 from vision.detection.pipeline import merge_detection_records
-from vision.depth_estimator import calibrate_depth, infer_depth, load_da2_model
-from vision.hand_calibrator import (
-    compute_focal_length,
-    detect_hand_landmarks_from_boxes,
-    detect_hand_landmarks_full_image,
-    init_mediapipe_hands,
-)
+from vision.depth_estimator import infer_depth, load_da2_model
 from vision.object_detector import compute_object_size_cm
 from vision.scene_builder import build_dll, build_scene_json, filter_objects, generate_description
 
@@ -138,12 +132,11 @@ def init_models():
     print_if_enabled("startup", "Dang tai Depth Anything V2...")
     da_model = load_da2_model(vcfg.DA2_CONFIG, vcfg.DA2_CHECKPOINT, device)
 
-    hands_full, hands_crop = init_mediapipe_hands()
-
-    return detector, da_model, hands_full, hands_crop
+    return detector, da_model, None, None
 
 
 def describe_image_with_models(image_path: str, detector, da_model, hands_full, hands_crop):
+    del hands_full, hands_crop
     timings = {}
     total_start = time.perf_counter()
 
@@ -167,23 +160,12 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
             return [], 0.0, {}
         return detector._run_open_vocab_detection(img, candidate_labels, orig)
 
-    def run_depth_hand_full():
+    def run_depth():
         result = {
             "depth_raw": None,
             "new_shape": (0, 0),
             "scale_ratio": 1.0,
             "depth_ms": 0.0,
-            "depth_calib_ms": 0.0,
-            "depth_final": None,
-            "hand_landmarks": None,
-            "hand_origin": None,
-            "hand_crop_img": None,
-            "hand_full_ms": 0.0,
-            "focal_length": None,
-            "pixel_hand": None,
-            "hand_center": None,
-            "focal_ms": 0.0,
-            "raw_depth_hand": None,
         }
 
         step_start = time.perf_counter()
@@ -192,56 +174,17 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         result["depth_raw"] = depth_raw
         result["new_shape"] = new_shape
         result["scale_ratio"] = scale_ratio
-
-        hand_landmarks, hand_origin, hand_crop_img, hand_full_s = detect_hand_landmarks_full_image(
-            img,
-            hands_full,
-        )
-        result["hand_landmarks"] = hand_landmarks
-        result["hand_origin"] = hand_origin
-        result["hand_crop_img"] = hand_crop_img
-        result["hand_full_ms"] = hand_full_s * 1000.0
-
-        if hand_landmarks is not None:
-            step_start = time.perf_counter()
-            focal_length, hand_center, pixel_hand = compute_focal_length(
-                hand_landmarks,
-                hand_crop_img,
-                hand_origin,
-                vcfg.KNOWN_DISTANCE_CM,
-                vcfg.REAL_HAND_LENGTH_CM,
-            )
-            result["focal_ms"] = (time.perf_counter() - step_start) * 1000.0
-            result["focal_length"] = focal_length
-            result["pixel_hand"] = pixel_hand
-            result["hand_center"] = hand_center
-            if focal_length is not None:
-                new_h, new_w = new_shape
-                hx, hy = hand_center
-                hx_s = int(np.clip(hx * new_w / w, 0, new_w - 1))
-                hy_s = int(np.clip(hy * new_h / h, 0, new_h - 1))
-                raw_depth_hand = float(depth_raw[hy_s, hx_s])
-                result["raw_depth_hand"] = raw_depth_hand
-                if raw_depth_hand >= 0.01:
-                    step_start = time.perf_counter()
-                    depth_scaled, _depth_scale = calibrate_depth(
-                        depth_raw,
-                        raw_depth_hand,
-                        vcfg.KNOWN_DISTANCE_CM,
-                    )
-                    result["depth_final"] = cv2.resize(depth_scaled, (w, h))
-                    result["depth_calib_ms"] = (time.perf_counter() - step_start) * 1000.0
         return result
 
     detector_start = time.perf_counter()
     with ThreadPoolExecutor(max_workers=3, thread_name_prefix="vision-task2") as executor:
         primary_future = executor.submit(run_primary)
         open_vocab_future = executor.submit(run_open_vocab)
-        depth_hand_future = executor.submit(run_depth_hand_full)
+        depth_future = executor.submit(run_depth)
 
         yolo_records, yolo_ms, primary_pipeline_timings = primary_future.result()
         open_vocab_records, yolo_world_ms, open_vocab_pipeline_timings = open_vocab_future.result()
-        depth_hand_result = depth_hand_future.result()
+        depth_result = depth_future.result()
 
     merge_start = time.perf_counter()
     boxes = merge_detection_records(
@@ -265,12 +208,13 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         timings[f"yolo_{key}"] = value
     for key, value in open_vocab_pipeline_timings.items():
         timings[f"yolo_world_{key}"] = value
-    timings["depth_ms"] = depth_hand_result["depth_ms"]
-    timings["hand_full_ms"] = depth_hand_result["hand_full_ms"]
+    timings["depth_ms"] = depth_result["depth_ms"]
+    timings["hand_full_ms"] = 0.0
     timings["hand_fallback_ms"] = 0.0
     timings["focal_fallback_ms"] = 0.0
-    timings["depth_calib_ms"] = depth_hand_result["depth_calib_ms"]
+    timings["depth_calib_ms"] = 0.0
     timings["depth_calib_fallback_ms"] = 0.0
+    timings["focal_ms"] = 0.0
 
     if open_vocab_records and is_enabled("vision_detector_debug", True):
         labels = sorted({record["label"] for record in open_vocab_records})
@@ -296,77 +240,11 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
             _format_detection_boxes_for_log(boxes),
         )
 
-    hand_landmarks = depth_hand_result["hand_landmarks"]
-    hand_origin = depth_hand_result["hand_origin"]
-    hand_crop_img = depth_hand_result["hand_crop_img"]
-    focal_length = depth_hand_result["focal_length"]
-    pixel_hand = depth_hand_result["pixel_hand"]
-    hand_center = depth_hand_result["hand_center"]
-    timings["focal_ms"] = depth_hand_result["focal_ms"]
-    focal_source = "full_image"
+    timings["hand_ms"] = 0.0
+    focal_length = vcfg.FIXED_FOCAL_LENGTH_PX
 
-    if hand_landmarks is None:
-        hand_landmarks, hand_origin, hand_crop_img, crop_time_s = detect_hand_landmarks_from_boxes(
-            img,
-            boxes,
-            detector._primary_label_backend(),
-            hands_crop,
-            conf_threshold=vcfg.CONF_THRESHOLD,
-        )
-        timings["hand_fallback_ms"] = crop_time_s * 1000.0
-        if hand_landmarks is not None:
-            focal_step_start = time.perf_counter()
-            focal_length, hand_center, pixel_hand = compute_focal_length(
-                hand_landmarks,
-                hand_crop_img,
-                hand_origin,
-                vcfg.KNOWN_DISTANCE_CM,
-                vcfg.REAL_HAND_LENGTH_CM,
-            )
-            timings["focal_fallback_ms"] = (time.perf_counter() - focal_step_start) * 1000.0
-            timings["focal_ms"] += timings["focal_fallback_ms"]
-            focal_source = "person_crop"
-
-    timings["hand_ms"] = timings["hand_full_ms"] + timings["hand_fallback_ms"]
-
-    if hand_landmarks is None:
-        _finalize_task2_timings(timings, total_start)
-        return "Khong detect duoc tay trong anh.", timings, ""
-
-    if is_enabled("hand_debug", True):
-        logger.info(
-            "Hand focal calibration | source=%s | focal_px=%s | pixel_hand=%s | hand_center=%s | known_distance_cm=%.1f | real_hand_length_cm=%.1f",
-            focal_source,
-            f"{focal_length:.2f}" if focal_length is not None else "invalid",
-            f"{pixel_hand:.2f}" if pixel_hand is not None else "n/a",
-            hand_center,
-            vcfg.KNOWN_DISTANCE_CM,
-            vcfg.REAL_HAND_LENGTH_CM,
-        )
-
-    if focal_length is None:
-        _finalize_task2_timings(timings, total_start)
-        return "Khoang cach landmark tay qua nho.", timings, ""
-
-    depth_final = depth_hand_result["depth_final"]
-    if depth_final is None:
-        depth_raw = depth_hand_result["depth_raw"]
-        new_h, new_w = depth_hand_result["new_shape"]
-
-        hx, hy = hand_center
-        hx_s = int(np.clip(hx * new_w / w, 0, new_w - 1))
-        hy_s = int(np.clip(hy * new_h / h, 0, new_h - 1))
-
-        raw_depth_hand = float(depth_raw[hy_s, hx_s])
-        if raw_depth_hand < 0.01:
-            _finalize_task2_timings(timings, total_start)
-            return "Depth tai tay khong hop le.", timings, ""
-
-        step_start = time.perf_counter()
-        depth_scaled, _depth_scale = calibrate_depth(depth_raw, raw_depth_hand, vcfg.KNOWN_DISTANCE_CM)
-        depth_final = cv2.resize(depth_scaled, (w, h))
-        timings["depth_calib_fallback_ms"] = (time.perf_counter() - step_start) * 1000.0
-        timings["depth_calib_ms"] += timings["depth_calib_fallback_ms"]
+    depth_raw = depth_result["depth_raw"]
+    depth_final = cv2.resize(depth_raw, (w, h))
 
     step_start = time.perf_counter()
     object_data = []

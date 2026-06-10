@@ -30,6 +30,7 @@ env/
 current_cmd.wav
 *.tmp
 *.temp
+debug_outputs/
 
 # Local audio captures and ad-hoc test assets
 *.wav

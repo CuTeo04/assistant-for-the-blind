@@ -11,6 +11,11 @@ from vision.config import vision_config as cfg
 from .backends import ensure_detector_backend
 
 logger = logging.getLogger("voice_server.vision")
+SEMANTIC_MERGE_LABEL_GROUPS = (
+    frozenset({"electric kettle", "kettle", "cooking pot"}),
+)
+SEMANTIC_MERGE_IOU_THRESHOLD = 0.65
+SEMANTIC_MERGE_CONTAINMENT_THRESHOLD = 0.80
 
 
 def boxes_to_detection_records(boxes: np.ndarray, label_lookup: dict[int, str], source: str) -> list[dict]:
@@ -289,6 +294,30 @@ def record_to_box(record: dict) -> np.ndarray:
     )
 
 
+def _semantic_group_for_label(label: str) -> str:
+    normalized = str(label).strip().lower()
+    for index, group in enumerate(SEMANTIC_MERGE_LABEL_GROUPS):
+        if normalized in group:
+            return f"semantic:{index}"
+    return normalized
+
+
+def _should_merge_records(current: dict, candidate: dict, iou_threshold: float) -> bool:
+    current_box = record_to_box(current)
+    candidate_box = record_to_box(candidate)
+    overlap = float(iou(current_box, candidate_box[None, :])[0])
+    if current["label"] == candidate["label"]:
+        return overlap > iou_threshold
+
+    current_group = _semantic_group_for_label(current["label"])
+    candidate_group = _semantic_group_for_label(candidate["label"])
+    if current_group != candidate_group or not current_group.startswith("semantic:"):
+        return False
+
+    containment = containment_ratio(current_box, candidate_box)
+    return overlap > SEMANTIC_MERGE_IOU_THRESHOLD or containment > SEMANTIC_MERGE_CONTAINMENT_THRESHOLD
+
+
 def merge_detection_records(
     yolo_records: list[dict],
     open_vocab_records: list[dict],
@@ -301,10 +330,10 @@ def merge_detection_records(
 
     grouped: dict[str, list[dict]] = {}
     for record in [*yolo_records, *open_vocab_records]:
-        grouped.setdefault(record["label"], []).append(record)
+        grouped.setdefault(_semantic_group_for_label(record["label"]), []).append(record)
 
     merged: list[dict] = []
-    for records in grouped.values():
+    for group_key, records in grouped.items():
         records = sorted(
             records,
             key=lambda item: (
@@ -317,12 +346,21 @@ def merge_detection_records(
         while records:
             current = records.pop(0)
             kept.append(current)
-            current_box = record_to_box(current)
             filtered = []
             for candidate in records:
-                overlap = float(iou(current_box, record_to_box(candidate)[None, :])[0])
-                if overlap <= iou_threshold:
+                if not _should_merge_records(current, candidate, iou_threshold):
                     filtered.append(candidate)
+                elif is_enabled("vision_detector_debug", True) and current["label"] != candidate["label"]:
+                    logger.info(
+                        "Semantic detector merge: keep=%s[%.2f,%s] drop=%s[%.2f,%s] group=%s",
+                        current["label"],
+                        float(current["conf"]),
+                        current.get("source", "unknown"),
+                        candidate["label"],
+                        float(candidate["conf"]),
+                        candidate.get("source", "unknown"),
+                        group_key,
+                    )
             records = filtered
         merged.extend(kept)
 

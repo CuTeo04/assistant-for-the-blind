@@ -234,7 +234,8 @@
     "open_vocab_redetect_enabled": false,
     "min_depth_m": 0.3,
     "max_depth_m": 8.0,
-    "max_objects": 5,
+    "description_max_objects": 5,
+    "debug_image_max_objects": 10,
     "yolo_device": "cpu"
   }
 }

@@ -156,7 +156,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             )
 
             logger.info(
-                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f scene=%.1f distance_desc=%.1f | detector_substeps(ms): yolo_full=%.1f yolo_filter=%.1f yolo_tiled=%.1f yolo_nms=%.1f yolo_redetect=%.1f yw_full=%.1f yw_filter=%.1f yw_tiled=%.1f yw_nms=%.1f yw_redetect=%.1f merge=%.1f detector_overhead=%.1f | raw=%s",
+                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f debug_image=%.1f scene=%.1f distance_desc=%.1f | detector_substeps(ms): yolo_full=%.1f yolo_filter=%.1f yolo_tiled=%.1f yolo_nms=%.1f yolo_redetect=%.1f yw_full=%.1f yw_filter=%.1f yw_tiled=%.1f yw_nms=%.1f yw_redetect=%.1f merge=%.1f detector_overhead=%.1f | raw=%s",
                 vision_latency,
                 timings.get("total_ms", 0.0),
                 timings.get("accounted_ms", 0.0),
@@ -170,6 +170,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
                 timings.get("depth_ms", 0.0),
                 timings.get("calib_objects_ms", 0.0),
                 timings.get("filter_ms", 0.0),
+                timings.get("debug_image_ms", 0.0),
                 timings.get("scene_ms", 0.0),
                 timings.get("distance_desc_ms", 0.0),
                 timings.get("yolo_full_infer_ms", 0.0),

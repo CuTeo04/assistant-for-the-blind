@@ -78,6 +78,10 @@ def _priority_score(obj: dict) -> float:
     return float(bg_penalty * obj["conf"] / (obj["Z"] + 0.1))
 
 
+def _selection_score(obj: dict) -> tuple[float, float]:
+    return -float(obj["Z"]), float(obj["conf"]) + _priority_score(obj)
+
+
 def filter_objects(
     object_data,
     focal_length: float,
@@ -86,7 +90,7 @@ def filter_objects(
     conf_threshold: float,
     min_depth_m: float,
     max_depth_m: float,
-    max_objects: int,
+    object_limit: int,
 ):
     objects = []
     for det, label, depth_m, _real_w_cm, _real_h_cm in object_data:
@@ -138,7 +142,7 @@ def filter_objects(
             }
         )
 
-    objects = sorted(objects, key=_priority_score, reverse=True)[:max_objects]
+    objects = sorted(objects, key=_selection_score, reverse=True)[:object_limit]
     return objects
 
 

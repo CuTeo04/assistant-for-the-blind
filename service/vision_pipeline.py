@@ -8,6 +8,7 @@ import torch
 
 from log_settings import is_enabled, print_if_enabled
 from vision.config import vision_config as vcfg
+from vision.debug_image import save_vision_debug_image
 from vision.detection.factory import create_detector_service
 from vision.detection.pipeline import merge_detection_records
 from vision.depth_estimator import infer_depth, load_da2_model
@@ -27,6 +28,7 @@ def _task2_accounted_ms(timings: dict) -> float:
             "depth_calib_fallback_ms",
             "calib_objects_ms",
             "filter_ms",
+            "debug_image_ms",
             "scene_ms",
             "distance_desc_ms",
         )
@@ -215,6 +217,7 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
     timings["depth_calib_ms"] = 0.0
     timings["depth_calib_fallback_ms"] = 0.0
     timings["focal_ms"] = 0.0
+    timings["debug_image_ms"] = 0.0
 
     if open_vocab_records and is_enabled("vision_detector_debug", True):
         labels = sorted({record["label"] for record in open_vocab_records})
@@ -274,6 +277,16 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         )
 
     step_start = time.perf_counter()
+    debug_objects = filter_objects(
+        object_data,
+        focal_length,
+        h,
+        w,
+        conf_threshold=vcfg.CONF_THRESHOLD,
+        min_depth_m=vcfg.MIN_DEPTH_M,
+        max_depth_m=vcfg.MAX_DEPTH_M,
+        object_limit=vcfg.DEBUG_IMAGE_MAX_OBJECTS,
+    )
     valid_objects = filter_objects(
         object_data,
         focal_length,
@@ -282,15 +295,22 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         conf_threshold=vcfg.CONF_THRESHOLD,
         min_depth_m=vcfg.MIN_DEPTH_M,
         max_depth_m=vcfg.MAX_DEPTH_M,
-        max_objects=vcfg.MAX_OBJECTS,
+        object_limit=vcfg.DESCRIPTION_MAX_OBJECTS,
     )
     timings["filter_ms"] = (time.perf_counter() - step_start) * 1000.0
     if is_enabled("vision_object_debug", True):
         logger.info(
-            "Valid objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
+            "Debug objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
             vcfg.MIN_DEPTH_M,
             vcfg.MAX_DEPTH_M,
-            vcfg.MAX_OBJECTS,
+            vcfg.DEBUG_IMAGE_MAX_OBJECTS,
+            _format_valid_objects_for_log(debug_objects),
+        )
+        logger.info(
+            "Description objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
+            vcfg.MIN_DEPTH_M,
+            vcfg.MAX_DEPTH_M,
+            vcfg.DESCRIPTION_MAX_OBJECTS,
             _format_valid_objects_for_log(valid_objects),
         )
     if not valid_objects:
@@ -298,6 +318,14 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         timings["distance_desc_ms"] = 0.0
         _finalize_task2_timings(timings, total_start)
         return "Khong phat hien duoc vat the hop le de mo ta.", timings, ""
+    if is_enabled("vision_debug_image", True) and debug_objects:
+        debug_start = time.perf_counter()
+        debug_image_path = save_vision_debug_image(image_path, orig, debug_objects, (h, w))
+        timings["debug_image_ms"] = (time.perf_counter() - debug_start) * 1000.0
+        if debug_image_path:
+            logger.info("Vision debug image saved: %s", debug_image_path)
+        else:
+            logger.warning("Vision debug image could not be created for %s", image_path)
     if len(valid_objects) == 1:
         timings["scene_ms"] = 0.0
         distance_start = time.perf_counter()

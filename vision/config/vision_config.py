@@ -53,7 +53,8 @@ CONF_THRESHOLD = _cfg["conf_threshold"]
 ALLOWED_CLASSES = {str(label).strip().lower() for label in _cfg.get("allowed_classes", [])}
 MIN_DEPTH_M = _cfg["min_depth_m"]
 MAX_DEPTH_M = _cfg["max_depth_m"]
-MAX_OBJECTS = _cfg["max_objects"]
+DESCRIPTION_MAX_OBJECTS = int(_cfg["description_max_objects"])
+DEBUG_IMAGE_MAX_OBJECTS = int(_cfg["debug_image_max_objects"])
 
 YOLO_DEVICE = _cfg.get("yolo_device", DEVICE)
 YOLO_IMGSZ = int(_cfg.get("yolo_imgsz", 960))

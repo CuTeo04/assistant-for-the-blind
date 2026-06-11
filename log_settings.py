@@ -13,7 +13,7 @@ LOG_SETTINGS = {
     "stt_debug": False,
     "response_debug": True,
     "http_client": True,
-    "uvicorn_access": False,
+    "uvicorn_access": True,
 }
 
 

@@ -3,6 +3,14 @@ import numpy as np
 from scipy.io import wavfile
 
 
+DEFAULT_DEVICE_ID = 2
+DEFAULT_SAMPLE_RATE = 16000
+DEFAULT_DURATION_SEC = 3
+DEFAULT_SILENCE_DB = -38
+DEFAULT_FRAME_MS = 10
+DEFAULT_AUDIO_TEMP_FILE = "current_cmd.wav"
+
+
 def trim_silence(audio_data, threshold_db: float, frame_duration_ms: int, fs: int):
     if len(audio_data) == 0:
         return audio_data

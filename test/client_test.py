@@ -2,11 +2,16 @@ import argparse
 import mimetypes
 import os
 import requests
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-from STT.config import voice_config as cfg
-from STT.recorder import record_audio
+
+from recorder import (
+    DEFAULT_AUDIO_TEMP_FILE,
+    DEFAULT_DEVICE_ID,
+    DEFAULT_DURATION_SEC,
+    DEFAULT_FRAME_MS,
+    DEFAULT_SAMPLE_RATE,
+    DEFAULT_SILENCE_DB,
+    record_audio,
+)
 
 
 # Hardcode đường dẫn ảnh
@@ -16,12 +21,12 @@ IMAGE_PATH = "test_room.jpg"
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:8000/process")
-    parser.add_argument("--device", type=int, default=cfg.DEVICE_ID)
-    parser.add_argument("--duration", type=int, default=cfg.DURATION_SEC)
-    parser.add_argument("--fs", type=int, default=cfg.SAMPLE_RATE)
-    parser.add_argument("--silence-db", type=float, default=cfg.SILENCE_DB)
-    parser.add_argument("--frame-ms", type=int, default=cfg.FRAME_MS)
-    parser.add_argument("--out", default=cfg.AUDIO_TEMP_FILE)
+    parser.add_argument("--device", type=int, default=DEFAULT_DEVICE_ID)
+    parser.add_argument("--duration", type=int, default=DEFAULT_DURATION_SEC)
+    parser.add_argument("--fs", type=int, default=DEFAULT_SAMPLE_RATE)
+    parser.add_argument("--silence-db", type=float, default=DEFAULT_SILENCE_DB)
+    parser.add_argument("--frame-ms", type=int, default=DEFAULT_FRAME_MS)
+    parser.add_argument("--out", default=DEFAULT_AUDIO_TEMP_FILE)
     args = parser.parse_args()
 
     audio_path = args.out

@@ -3,12 +3,12 @@ import logging
 
 LOG_SETTINGS = {
     "global_enabled": True,
-    "startup": False,
+    "startup": True,
     "healthcheck": True,
     "request_summary": True,
     "vision_detector_debug": False,
-    "vision_object_debug": True,
-    "vision_debug_image": True,
+    "vision_object_debug": False,
+    "vision_debug_image": False,
     "hand_debug": True,
     "stt_debug": False,
     "response_debug": True,

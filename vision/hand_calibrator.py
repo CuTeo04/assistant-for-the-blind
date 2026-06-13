@@ -32,7 +32,7 @@ def detect_hand_landmarks_full_image(img_bgr, hands_full):
         print_if_enabled("hand_debug", f"MediaPipe detect tay tren toan anh ({full_time:.3f}s)")
         return result.multi_hand_landmarks[0], (0, 0), img_bgr, full_time
 
-    print_if_enabled("hand_debug", f"Khong thay tay tren toan anh ({full_time:.3f}s), thu crop person...")
+        print_if_enabled("hand_debug", f"Không thấy tay trên toàn ảnh ({full_time:.3f}s), thử crop person...")
     return None, None, None, full_time
 
 

@@ -1,9 +1,15 @@
 import asyncio
+import atexit
 import logging
 import os
+import signal
 import socket
 import tempfile
 import time
+import threading
+import sys
+import traceback
+from uuid import uuid4
 
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
@@ -30,6 +36,54 @@ da_model = None
 hands_full = None
 hands_crop = None
 response_client = None
+
+
+def _install_process_logging_hooks():
+    def _log_unhandled_exception(exc_type, exc_value, exc_tb):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_tb)
+            return
+        logger.critical(
+            "Unhandled exception in main thread",
+            exc_info=(exc_type, exc_value, exc_tb),
+        )
+
+    def _log_thread_exception(args):
+        logger.critical(
+            "Unhandled exception in thread %s",
+            getattr(args.thread, "name", "<unknown>"),
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
+
+    def _log_signal(signum, frame):
+        try:
+            signal_name = signal.Signals(signum).name
+        except Exception:
+            signal_name = str(signum)
+        logger.warning(
+            "Process received signal %s; frame=%s",
+            signal_name,
+            traceback.extract_stack(frame)[-1] if frame else None,
+        )
+
+    def _log_exit():
+        logger.warning("Process exit hook fired")
+
+    sys.excepthook = _log_unhandled_exception
+    threading.excepthook = _log_thread_exception
+    atexit.register(_log_exit)
+
+    for sig_name in ("SIGINT", "SIGTERM"):
+        sig = getattr(signal, sig_name, None)
+        if sig is None:
+            continue
+        try:
+            signal.signal(sig, _log_signal)
+        except Exception:
+            logger.warning("Could not install signal handler for %s", sig_name, exc_info=True)
+
+
+_install_process_logging_hooks()
 
 
 def _discover_server_urls(host: str, port: int) -> list[str]:
@@ -72,13 +126,22 @@ def get_response_client():
 def load_models():
     global detector, da_model, hands_full, hands_crop
     if is_enabled("startup", True):
-        logger.info("Loading vision models...")
+        logger.info(
+            "Loading vision models | pid=%s | thread=%s",
+            os.getpid(),
+            threading.current_thread().name,
+        )
     detector, da_model, hands_full, hands_crop = init_models()
     if is_enabled("startup", True):
         logger.info("Vision models ready")
     server_urls = _discover_server_urls(_cfg["host"], int(_cfg["port"]))
     if is_enabled("startup", True):
         logger.info("Server URLs: %s", " | ".join(server_urls))
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    logger.warning("FastAPI shutdown event fired | pid=%s", os.getpid())
 
 
 @app.get("/health")
@@ -90,7 +153,15 @@ def health_check():
 
 @app.post("/process")
 async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(...)):
+    request_id = uuid4().hex[:8]
     req_start = time.perf_counter()
+    logger.info(
+        "Request start | id=%s | audio=%s | image=%s | thread=%s",
+        request_id,
+        audio.filename,
+        image.filename,
+        threading.current_thread().name,
+    )
     if not audio.filename or not image.filename:
         logger.warning("Missing filename in upload")
         return JSONResponse(status_code=400, content={"error": "Missing filename"})
@@ -244,6 +315,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             os.remove(audio_path)
         if image_path and os.path.exists(image_path):
             os.remove(image_path)
+        logger.info("Request end | id=%s", request_id)
 
 
 if __name__ == "__main__":
@@ -251,6 +323,13 @@ if __name__ == "__main__":
 
     ssl_certfile = _cfg.get("ssl_certfile") or None
     ssl_keyfile = _cfg.get("ssl_keyfile") or None
+    logger.info(
+        "Starting uvicorn | host=%s | port=%s | ssl=%s | pid=%s",
+        _cfg["host"],
+        _cfg["port"],
+        bool(ssl_certfile and ssl_keyfile),
+        os.getpid(),
+    )
     uvicorn.run(
         app,
         host=_cfg["host"],

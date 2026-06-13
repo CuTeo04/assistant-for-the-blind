@@ -62,15 +62,15 @@ def _horiz_dir(ref: SceneNode, other: SceneNode) -> str:
     oth_max = float(max(other.X_left, other.X_right))
 
     if oth_min > ref_max:
-        return "phai"
+        return "phải"
     if oth_max < ref_min:
-        return "trai"
+        return "trái"
 
     dz = float(other.Z - ref.Z)
     if abs(dz) > 0.10:
-        return "sau" if dz > 0 else "truoc"
+        return "sau" if dz > 0 else "trước"
 
-    return "ngay canh"
+    return "ngay cạnh"
 
 
 def _priority_score(obj: dict) -> float:
@@ -434,11 +434,11 @@ def generate_description(scene_json: dict) -> str:
         return "Không phát hiện được vật thể hợp lệ để mô tả."
 
     direction_map = {
-        "phai": "phải",
-        "trai": "trái",
-        "truoc": "trước",
+        "phải": "phải",
+        "trái": "trái",
+        "trước": "trước",
         "sau": "sau",
-        "ngay canh": "ngay cạnh",
+        "ngay cạnh": "ngay cạnh",
     }
 
     parts = []
@@ -449,7 +449,7 @@ def generate_description(scene_json: dict) -> str:
 
     for rel in scene_json.get("chuoi_ngang", []):
         direction = direction_map.get(rel.get("huong"), rel.get("huong"))
-        if rel.get("huong") == "ngay canh":
+        if rel.get("huong") == "ngay cạnh":
             parts.append(
                 f"Ngay cạnh cái {rel['cua']} "
                 f"{_fmt_distance(rel['dist'])} là cái {rel['tu']}."
@@ -459,7 +459,7 @@ def generate_description(scene_json: dict) -> str:
                 f"Phía sau cái {rel['cua']} "
                 f"{_fmt_distance(rel['dist'])} là cái {rel['tu']}."
             )
-        elif rel.get("huong") == "truoc":
+        elif rel.get("huong") == "trước":
             parts.append(
                 f"Phía trước cái {rel['cua']} "
                 f"{_fmt_distance(rel['dist'])} là cái {rel['tu']}."

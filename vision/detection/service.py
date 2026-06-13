@@ -57,6 +57,7 @@ class VisionDetectorService:
         )
         self.last_detection_timings_ms: dict[str, float] = {}
         self.executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="vision-detector")
+        self.full_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="vision-detector-full")
         self.split_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="vision-detector-split")
 
     def reset_predictors(self):
@@ -143,7 +144,7 @@ class VisionDetectorService:
     def _run_primary_detection(self, img, orig_img=None) -> tuple[list[dict], float, dict[str, float]]:
         start = time.perf_counter()
         if self.primary_full_backend is not None and self.primary_tile_backend is not None:
-            full_future = self.split_executor.submit(self._run_primary_full_detection, img)
+            full_future = self.full_executor.submit(self._run_primary_full_detection, img)
             tile_future = self.split_executor.submit(self._run_primary_tile_detection, img, orig_img)
             full_boxes, full_timings = full_future.result()
             tile_boxes, tile_timings = tile_future.result()
@@ -261,7 +262,7 @@ class VisionDetectorService:
     ) -> tuple[list[dict], float, dict[str, float]]:
         start = time.perf_counter()
         if self.open_vocab_full_backend is not None and self.open_vocab_tile_backend is not None:
-            full_future = self.split_executor.submit(
+            full_future = self.full_executor.submit(
                 self._run_open_vocab_full_detection,
                 img,
                 candidate_labels,

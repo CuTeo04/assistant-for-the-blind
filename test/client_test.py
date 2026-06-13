@@ -42,7 +42,7 @@ def main():
         )
 
     if not audio_path:
-        print("Khong co audio de gui.")
+        print("Không có audio để gửi.")
         return
 
     # Xác định MIME type của ảnh
@@ -63,12 +63,12 @@ def main():
             print(f"API: {data.get('api')}")
             print(f"Text: {data.get('text')}")
         else:
-            print(f"Loi server: {res.status_code} - {res.text}")
+            print(f"Lỗi server: {res.status_code} - {res.text}")
 
     except FileNotFoundError as e:
-        print(f"Khong tim thay file: {e.filename}")
+        print(f"Không tìm thấy file: {e.filename}")
     except Exception as e:
-        print(f"Loi khong xac dinh: {e}")
+        print(f"Lỗi không xác định: {e}")
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ def record_audio(
     silence_db: float,
     frame_ms: int,
 ):
-    print(f"Dang nghe... (hay noi lenh trong {duration} giay)")
+    print(f"Đang nghe... (hãy nói lệnh trong {duration} giây)")
     try:
         recording = sd.rec(
             int(duration * fs),
@@ -73,10 +73,10 @@ def record_audio(
 
         original_len = len(recording) / fs
         trimmed_len = len(trimmed) / fs
-        print(f"Da cat silence: {original_len:.2f}s --> {trimmed_len:.2f}s")
+        print(f"Đã cắt im lặng: {original_len:.2f}s --> {trimmed_len:.2f}s")
 
         return filename
 
     except Exception as exc:
-        print(f"Loi ghi am: {exc}")
+        print(f"Lỗi ghi âm: {exc}")
         return None

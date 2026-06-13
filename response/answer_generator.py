@@ -370,16 +370,20 @@ def _remove_redundant_target_front_sentence(text: str, target_object: str) -> st
         return text
 
     kept = []
+    front_phrase = _normalize_text("phía trước")
+    back_phrase = _normalize_text("phía sau")
+    in_front_of_user_phrase = _normalize_text("phía trước bạn")
+    in_front_of_face_phrase = _normalize_text("trước mặt bạn")
     for idx, sentence in enumerate(sentences):
         normalized = _normalize_text(sentence)
         is_target_sentence = _contains_target(sentence, terms)
         starts_with_target = _starts_with_target(sentence, terms)
-        is_front_of_user = "phia truoc ban" in normalized or "truoc mat ban" in normalized
+        is_front_of_user = in_front_of_user_phrase in normalized or in_front_of_face_phrase in normalized
         is_target_relative_clause = (
-            ("phia truoc" in normalized or "phia sau" in normalized)
-            and "cach ban" not in normalized
+            (front_phrase in normalized or back_phrase in normalized)
+            and _normalize_text("cách bạn") not in normalized
         )
-        has_target_distance = bool(re.search(r"\bcach ban\b", normalized)) and bool(
+        has_target_distance = bool(re.search(rf"\b{re.escape(_normalize_text('cách bạn'))}\b", normalized)) and bool(
             re.search(r"\d", sentence)
         )
         if idx > 0 and starts_with_target and is_target_relative_clause and not has_target_distance:
@@ -418,6 +422,8 @@ def _fix_relative_depth_by_distance(text: str, target_object: str) -> str:
         return text
 
     fixed = []
+    back_phrase = _normalize_text("phía sau")
+    front_phrase = _normalize_text("phía trước")
     for sentence in sentences:
         object_distance = _extract_distance_number(sentence)
         if object_distance is None or _starts_with_target(sentence, terms):
@@ -425,9 +431,9 @@ def _fix_relative_depth_by_distance(text: str, target_object: str) -> str:
             continue
 
         normalized = _normalize_text(sentence)
-        if "phia sau" in normalized and object_distance < target_distance:
+        if back_phrase in normalized and object_distance < target_distance:
             sentence = re.sub(r"phía sau", "phía trước", sentence, flags=re.IGNORECASE)
-        elif "phia truoc" in normalized and object_distance > target_distance:
+        elif front_phrase in normalized and object_distance > target_distance:
             sentence = re.sub(r"phía trước", "phía sau", sentence, flags=re.IGNORECASE)
         fixed.append(sentence)
 

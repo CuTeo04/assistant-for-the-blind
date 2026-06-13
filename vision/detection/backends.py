@@ -223,12 +223,28 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
         while True:
             attempt += 1
             try:
+                logger.info(
+                    "%s creating ONNX session | reason=%s | attempt=%d | providers=%s | model=%s",
+                    self.source_name,
+                    reason,
+                    attempt,
+                    self.preferred_providers,
+                    self.model_path,
+                )
                 self.providers = list(self.preferred_providers)
-                return ort.InferenceSession(
+                session = ort.InferenceSession(
                     self.model_path,
                     sess_options=self.session_options,
                     providers=self.providers,
                 )
+                logger.info(
+                    "%s ONNX session created | reason=%s | attempt=%d | providers=%s",
+                    self.source_name,
+                    reason,
+                    attempt,
+                    session.get_providers(),
+                )
+                return session
             except Exception:
                 if not self._uses_accelerator():
                     raise
@@ -378,6 +394,15 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
             images = padded_images
 
         input_h, input_w = self._target_hw(imgsz)
+        logger.info(
+            "%s predict_boxes_batch start | images=%d | batch=%d | conf=%.2f | hw=%sx%s",
+            self.source_name,
+            len(images),
+            max_batch,
+            conf_threshold,
+            input_h,
+            input_w,
+        )
         tensors = []
         for img in images:
             resized = _letterbox_image(img, (input_h, input_w))
@@ -389,7 +414,19 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
         while True:
             attempt += 1
             try:
+                logger.info(
+                    "%s session.run start | attempt=%d | input=%s | batch_shape=%s",
+                    self.source_name,
+                    attempt,
+                    self.input_name,
+                    batch_tensor.shape,
+                )
                 outputs = self.session.run(self.output_names, {self.input_name: batch_tensor})
+                logger.info(
+                    "%s session.run done | attempt=%d",
+                    self.source_name,
+                    attempt,
+                )
                 break
             except Exception:
                 if not self._uses_accelerator():
@@ -422,6 +459,7 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
             detections = detections.clone()
             scale_boxes((input_h, input_w), detections[:, :4], img.shape[:2])
             results.append(detections[:, :6].cpu().numpy().astype(np.float32))
+        logger.info("%s predict_boxes_batch done | outputs=%d", self.source_name, len(results))
         return results[:original_count]
 
 

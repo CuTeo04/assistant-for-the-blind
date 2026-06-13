@@ -96,13 +96,13 @@ def format_command_response(api_string: str) -> str:
     if "TIM_DEN_LAY" in api_string:
         do_vat = api_string.split(":")[-1].strip()
         if do_vat:
-            return f"Dang tim va lay {do_vat}."
-        return "Dang tim va lay vat the."
+            return f"Đang tìm và lấy {do_vat}."
+        return "Đang tìm và lấy vật thể."
     if "THIET_LAP_CAU_HINH" in api_string:
-        return "Mo bang thiet lap cau hinh."
+        return "Mở bảng thiết lập cấu hình."
     if "O_PHIA_TRUOC_CO_GI" in api_string:
-        return "Bat camera quet phia truoc."
-    return "Lenh khong xac dinh."
+        return "Bật camera quét phía trước."
+    return "Lệnh không xác định."
 
 
 def process_voice_command(audio_path: str, config=cfg):
@@ -112,7 +112,7 @@ def process_voice_command(audio_path: str, config=cfg):
     try:
         client = init_client(config.GROQ_API_KEY, config.GROQ_BASE_URL)
 
-        print_if_enabled("stt_debug", "Dang gui audio len Whisper...")
+        print_if_enabled("stt_debug", "Đang gửi audio lên Whisper...")
         text, whisper_latency = transcribe_audio(
             client,
             audio_path,
@@ -122,13 +122,13 @@ def process_voice_command(audio_path: str, config=cfg):
         )
 
         if not text or len(text) < 3:
-            print_if_enabled("stt_debug", "Khong nghe ro hoac chi co tieng on.")
+            print_if_enabled("stt_debug", "Không nghe rõ hoặc chỉ có tiếng ồn.")
             return
 
         print_if_enabled("stt_debug", f"Nghe duoc: \"{text}\"")
         print_if_enabled("stt_debug", f"Whisper latency: {whisper_latency:.3f} giay\n")
 
-        print_if_enabled("stt_debug", "Dang phan loai lenh bang LLM...")
+        print_if_enabled("stt_debug", "Đang phân loại lệnh bằng LLM...")
         llm_text, llm_latency = classify_command(
             client,
             text,
@@ -148,7 +148,7 @@ def process_voice_command(audio_path: str, config=cfg):
         execute_command(api_string)
 
     except Exception as exc:
-        print_if_enabled("stt_debug", f"Loi xu ly API: {exc}")
+        print_if_enabled("stt_debug", f"Lỗi xử lý API: {exc}")
 
 
 def process_voice_command_return(audio_path: str, config=cfg):
@@ -156,7 +156,7 @@ def process_voice_command_return(audio_path: str, config=cfg):
     if not api_string:
         return None
     if api_string == "KHONG_XAC_DINH":
-        return "Khong nghe ro hoac chi co tieng on." if not transcript else "Lenh khong xac dinh."
+        return "Không nghe rõ hoặc chỉ có tiếng ồn." if not transcript else "Lệnh không xác định."
     return format_command_response(api_string)
 
 

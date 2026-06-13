@@ -321,9 +321,6 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
         return self.names
 
     def tile_batch_size(self) -> int:
-        providers = tuple(self.session.get_providers())
-        if "DmlExecutionProvider" in providers:
-            return 1
         return max(1, int(self.input_batch or 1))
 
     def _target_hw(self, imgsz=None) -> tuple[int, int]:

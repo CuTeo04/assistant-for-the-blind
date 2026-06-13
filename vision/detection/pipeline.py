@@ -711,7 +711,7 @@ def run_detector_pipeline(
         full_boxes = full_boxes.astype(np.float32)
         timings["full_filter_ms"] = (time.perf_counter() - step_start) * 1000.0
 
-    if not tiled_enabled or orig_img is None:
+    if not tiled_enabled or img is None:
         step_start = time.perf_counter()
         final_boxes = redetect_for_nested_candidates(
             backend,
@@ -738,7 +738,7 @@ def run_detector_pipeline(
     step_start = time.perf_counter()
     tiled_boxes = detect_tiled_on_original(
         backend,
-        orig_img,
+        img,
         img_w,
         img_h,
         conf_threshold,

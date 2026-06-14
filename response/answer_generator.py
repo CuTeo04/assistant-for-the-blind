@@ -6,8 +6,10 @@ from openai import OpenAI
 from log_settings import print_if_enabled
 from prompt.prompts import (
     API_O_PHIA_TRUOC_CO_GI_USER_TEMPLATE,
+    API_REGION_QUERY_USER_TEMPLATE,
     API_TIM_DEN_LAY_USER_TEMPLATE,
     RESPONSE_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT,
+    RESPONSE_REGION_QUERY_SYSTEM_PROMPT,
     RESPONSE_TIM_DEN_LAY_SYSTEM_PROMPT,
 )
 
@@ -110,26 +112,13 @@ def _contains_target(text: str, terms: set[str]) -> bool:
 def _starts_with_target(text: str, terms: set[str]) -> bool:
     normalized = _normalize_text(text)
     return any(
-        re.match(rf"^(cai|chiec)?\s*{re.escape(term)}\b", normalized)
+        re.match(rf"^(muc tieu\s+\d+\s*:\s*)?(cai|chiec)?\s*{re.escape(term)}\b", normalized)
         for term in terms
     )
 
 
 def _extract_target_distance(distance_description: str, target_object: str) -> str:
-    if not distance_description or not target_object:
-        return "Không có dữ liệu ưu tiên cho vật mục tiêu."
-
-    terms = _target_terms(target_object)
-    if not terms:
-        return "Không có dữ liệu ưu tiên cho vật mục tiêu."
-
-    parts = [p.strip() for p in distance_description.split(";") if p.strip()]
-    matched = []
-    for part in parts:
-        label = part.split(":", 1)[0]
-        if _contains_target(label, terms):
-            matched.append(_translate_yolo_labels(part))
-
+    matched = _collect_target_distance_parts(distance_description, target_object, limit=3)
     if matched:
         return "; ".join(matched)
     return "Không có dữ liệu ưu tiên cho vật mục tiêu."
@@ -174,6 +163,78 @@ def _distance_to_cm(distance_text: str) -> float | None:
     return value * 100.0 if unit == "m" else value
 
 
+def _clock_hour(info_text: str) -> int | None:
+    match = re.search(r"\bhướng\s+([0-9]{1,2})\s+giờ\b", info_text or "", flags=re.IGNORECASE)
+    if not match:
+        return None
+    hour = int(match.group(1))
+    return hour if 1 <= hour <= 12 else None
+
+
+def _parse_distance_entries(distance_description: str) -> list[dict]:
+    entries: list[dict] = []
+    for index, part in enumerate([p.strip() for p in (distance_description or "").split(";") if p.strip()]):
+        label, sep, info_text = part.partition(":")
+        if not sep:
+            continue
+        entries.append(
+            {
+                "index": index,
+                "label": label.strip(),
+                "info_text": info_text.strip(),
+                "distance_cm": _distance_to_cm(info_text),
+                "distance_text": _split_distance_clock(info_text)[0],
+                "clock_text": _split_distance_clock(info_text)[1],
+                "clock_hour": _clock_hour(info_text),
+                "translated_part": _translate_yolo_labels(part),
+            }
+        )
+    return entries
+
+
+def _collect_target_distance_parts(distance_description: str, target_object: str, limit: int = 3) -> list[str]:
+    if not distance_description or not target_object or limit <= 0:
+        return []
+
+    terms = _target_terms(target_object)
+    if not terms:
+        return []
+
+    matched: list[tuple[float, int, str]] = []
+    for entry in _parse_distance_entries(distance_description):
+        if not _contains_target(entry["label"], terms):
+            continue
+        sort_key = float("inf") if entry["distance_cm"] is None else float(entry["distance_cm"])
+        matched.append((sort_key, int(entry["index"]), str(entry["translated_part"])))
+
+    matched.sort(key=lambda item: (item[0], item[1]))
+    return [part for _distance_cm, _index, part in matched[:limit]]
+
+
+def _collect_target_objects(object_brief: list[dict] | None, target_object: str, limit: int = 3) -> list[dict]:
+    if not object_brief or not target_object or limit <= 0:
+        return []
+
+    terms = _target_terms(target_object)
+    if not terms:
+        return []
+
+    matched = []
+    for index, obj in enumerate(object_brief):
+        label = str(obj.get("label", ""))
+        display_label = str(obj.get("display_label", label))
+        if not (_contains_target(label, terms) or _contains_target(display_label, terms)):
+            continue
+        distance_m = obj.get("distance_m")
+        sort_key = float("inf")
+        if isinstance(distance_m, (int, float)):
+            sort_key = float(distance_m)
+        matched.append((sort_key, index, obj))
+
+    matched.sort(key=lambda item: (item[0], item[1]))
+    return [obj for _sort_key, _index, obj in matched[:limit]]
+
+
 def _split_distance_clock(info_text: str) -> tuple[str, str]:
     text = (info_text or "").strip()
     clock_match = re.search(r"\bhướng\s+([0-9]{1,2})\s+giờ\b", text, flags=re.IGNORECASE)
@@ -181,6 +242,12 @@ def _split_distance_clock(info_text: str) -> tuple[str, str]:
     distance_match = re.search(r"([0-9]+(?:[,.][0-9]+)?\s*(?:cm|m))", text, flags=re.IGNORECASE)
     distance_text = distance_match.group(1) if distance_match else ""
     return distance_text.strip(), clock_text.strip()
+
+
+def _format_object_distance_text(distance_m: float | None) -> str:
+    if not isinstance(distance_m, (int, float)) or distance_m <= 0:
+        return ""
+    return f"{float(distance_m):.2f}m"
 
 
 def _format_target_position_line(target_name: str, info_text: str) -> str:
@@ -192,6 +259,16 @@ def _format_target_position_line(target_name: str, info_text: str) -> str:
     if distance_text:
         return f"Mục tiêu: {target_name} cách bạn {distance_text}."
     return f"Mục tiêu: {target_name}."
+
+
+def _target_rank_phrase(index: int, total: int) -> str:
+    if total <= 1:
+        return "gần nhất"
+    if index == 0:
+        return "gần nhất"
+    if index == total - 1:
+        return "xa nhất"
+    return "xa hơn"
 
 
 def _direction_phrase(direction: str, immediate: bool = False) -> str:
@@ -258,16 +335,42 @@ def _build_rule_context_for_target(
     target_object: str,
     distance_description: str,
     raw_description: str,
+    object_brief: list[dict] | None = None,
 ) -> str:
-    terms = _target_terms(target_object)
     lines: list[str] = []
 
-    for part in [p.strip() for p in (distance_description or "").split(";") if p.strip()]:
-        label, sep, distance = part.partition(":")
-        if sep and _contains_target(label, terms):
+    target_objects = _collect_target_objects(object_brief, target_object, limit=3)
+    total_targets = len(target_objects)
+    for index, obj in enumerate(target_objects):
+        target_name = _translate_object_name_with_id(str(obj.get("display_label", obj.get("label", target_object))))
+        rank_phrase = _target_rank_phrase(index, total_targets)
+        clock_text = str(obj.get("clock_label") or "").strip()
+        distance_text = _format_object_distance_text(obj.get("distance_m"))
+        position_text = f"{target_name} ở {rank_phrase}"
+        if clock_text:
+            position_text += f", {clock_text}"
+        if distance_text:
+            position_text += f", cách bạn {distance_text}"
+        lines.append(f"Mục tiêu {index + 1}: {position_text}.")
+
+    if not lines:
+        target_parts = _collect_target_distance_parts(distance_description, target_object, limit=3)
+        total_targets = len(target_parts)
+        for index, part in enumerate(target_parts):
+            label, sep, distance = part.partition(":")
+            if not sep:
+                continue
             target_name = _translate_object_name_with_id(label)
-            lines.append(_format_target_position_line(target_name, distance))
-            break
+            rank_phrase = _target_rank_phrase(index, total_targets)
+            distance_text, clock_text = _split_distance_clock(distance)
+            position_text = f"{target_name} ở {rank_phrase}"
+            if clock_text:
+                position_text += f", {clock_text}"
+            if distance_text:
+                position_text += f", cách bạn {distance_text}"
+            lines.append(f"Mục tiêu {index + 1}: {position_text}.")
+
+    terms = _target_terms(target_object)
 
     for sentence in re.split(r"(?<=[.!?])\s+", raw_description or ""):
         sentence = sentence.strip()
@@ -338,13 +441,117 @@ def _looks_like_target_context(raw_description: str) -> bool:
     return bool(re.search(r"(^|\n)(Mục tiêu|Quan hệ):", raw_description or ""))
 
 
+REGION_QUERY_INTENT_MAP = {
+    "O_BEN_TRAI_CO_GI": {
+        "region_name": "bên trái",
+        "clock_hours": {8, 9, 10},
+    },
+    "O_BEN_PHAI_CO_GI": {
+        "region_name": "bên phải",
+        "clock_hours": {2, 3, 4},
+    },
+    "O_PHIA_DUOI_CO_GI": {
+        "region_name": "phía dưới",
+        "clock_hours": {5, 6, 7},
+    },
+}
+
+
+def _is_region_query_intent(api_string: str) -> bool:
+    api_upper = (api_string or "").upper()
+    return any(api_upper.startswith(intent) for intent in REGION_QUERY_INTENT_MAP)
+
+
+def _region_query_config(api_string: str) -> dict | None:
+    api_upper = (api_string or "").upper()
+    for intent, config in REGION_QUERY_INTENT_MAP.items():
+        if api_upper.startswith(intent):
+            return config
+    return None
+
+
+def _build_rule_context_for_region(
+    api_string: str,
+    distance_description: str,
+    raw_description: str,
+    object_brief: list[dict] | None = None,
+) -> str:
+    config = _region_query_config(api_string)
+    if not config:
+        return _translate_yolo_labels(raw_description)
+
+    region_name = str(config["region_name"])
+    region_hours = set(config["clock_hours"])
+    selected: list[dict] = []
+    if object_brief:
+        region_objects = []
+        for index, obj in enumerate(object_brief):
+            clock_hour = obj.get("clock_hour")
+            if clock_hour is None or clock_hour not in region_hours:
+                continue
+            distance_m = obj.get("distance_m")
+            sort_key = float("inf")
+            if isinstance(distance_m, (int, float)):
+                sort_key = float(distance_m)
+            region_objects.append((sort_key, index, obj))
+
+        region_objects.sort(key=lambda item: (item[0], item[1]))
+        selected = [obj for _sort_key, _index, obj in region_objects[:3]]
+
+    lines = [f"Khu vực ưu tiên: {region_name}."]
+    total_selected = len(selected)
+    for index, obj in enumerate(selected):
+        rank_phrase = _target_rank_phrase(index, total_selected)
+        target_name = _translate_object_name_with_id(str(obj.get("display_label", obj.get("label", "vật thể"))))
+        clock_text = str(obj.get("clock_label") or "").strip()
+        distance_text = _format_object_distance_text(obj.get("distance_m"))
+        position_text = f"{target_name} ở {rank_phrase}"
+        if clock_text:
+            position_text += f", {clock_text}"
+        if distance_text:
+            position_text += f", cách bạn {distance_text}"
+        lines.append(f"Vật {index + 1}: {position_text}.")
+
+    if len(lines) == 1:
+        entries = []
+        for entry in _parse_distance_entries(distance_description):
+            clock_hour = entry["clock_hour"]
+            if clock_hour is None or clock_hour not in region_hours:
+                continue
+            sort_key = float("inf") if entry["distance_cm"] is None else float(entry["distance_cm"])
+            entries.append((sort_key, int(entry["index"]), entry))
+
+        entries.sort(key=lambda item: (item[0], item[1]))
+        fallback_selected = [entry for _sort_key, _index, entry in entries[:3]]
+        total_selected = len(fallback_selected)
+        for index, entry in enumerate(fallback_selected):
+            rank_phrase = _target_rank_phrase(index, total_selected)
+            target_name = _translate_object_name_with_id(str(entry["label"]))
+            position_text = f"{target_name} ở {rank_phrase}"
+            if entry["clock_text"]:
+                position_text += f", {entry['clock_text']}"
+            if entry["distance_text"]:
+                position_text += f", cách bạn {entry['distance_text']}"
+            lines.append(f"Vật {index + 1}: {position_text}.")
+
+    if len(lines) == 1:
+        lines.append(f"Chưa có vật nào được xác định rõ ở khu vực {region_name}.")
+        if raw_description:
+            lines.append(f"Bối cảnh chung: {_translate_yolo_labels(raw_description)}")
+
+    return "\n".join(lines)
+
+
 def select_raw_description_for_api(
     api_string: str,
     distance_description: str,
     raw_description: str,
+    object_brief: list[dict] | None = None,
 ) -> str:
     """Choose the raw description shape that matches the classified API intent."""
     api_upper = (api_string or "").upper()
+    if _is_region_query_intent(api_string):
+        return _build_rule_context_for_region(api_string, distance_description, raw_description, object_brief)
     if not api_upper.startswith("TIM_DEN_LAY"):
         return _translate_yolo_labels(raw_description)
 
@@ -357,6 +564,7 @@ def select_raw_description_for_api(
         target_object,
         distance_description,
         raw_description,
+        object_brief,
     )
 
 
@@ -527,6 +735,7 @@ def answer_from_api(
     transcript: str,
     distance_description: str,
     raw_description: str,
+    object_brief: list[dict] | None,
     model: str,
     max_tokens: int,
     temperature: float,
@@ -545,6 +754,8 @@ def answer_from_api(
         if ":" in api_string:
             target_object = api_string.split(":", 1)[1].strip()
         system_prompt = RESPONSE_TIM_DEN_LAY_SYSTEM_PROMPT
+    elif _is_region_query_intent(api_string):
+        system_prompt = RESPONSE_REGION_QUERY_SYSTEM_PROMPT
     elif not api_upper.startswith("O_PHIA_TRUOC_CO_GI"):
         return raw_description
     else:
@@ -560,12 +771,21 @@ def answer_from_api(
                 target_object,
                 distance_description,
                 raw_description,
+                object_brief,
             )
         user_prompt = API_TIM_DEN_LAY_USER_TEMPLATE.format(
             api_string=api_string,
             target_object=target_object,
             target_distance_description=target_distance_text,
             raw_description=target_context_text,
+        )
+    elif _is_region_query_intent(api_string):
+        region_config = _region_query_config(api_string)
+        region_name = str(region_config["region_name"]) if region_config else "khu vực được hỏi"
+        user_prompt = API_REGION_QUERY_USER_TEMPLATE.format(
+            api_string=api_string,
+            region_name=region_name,
+            raw_description=raw_description,
         )
     else:
         user_prompt = API_O_PHIA_TRUOC_CO_GI_USER_TEMPLATE.format(

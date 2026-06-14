@@ -221,6 +221,35 @@ def build_distance_description(objects: list[dict]) -> str:
     return "; ".join(parts)
 
 
+def build_object_brief(objects: list[dict]) -> list[dict]:
+    if not objects:
+        return []
+
+    counts: dict[str, int] = {}
+    items: list[dict] = []
+    for obj in objects:
+        label = str(obj.get("label", "object"))
+        translated_label = translate_label(label)
+        counts[translated_label] = counts.get(translated_label, 0) + 1
+        items.append(
+            {
+                "label": label,
+                "display_label": f"{translated_label} {counts[translated_label]}",
+                "distance_m": float(obj.get("Z", 0.0)),
+                "clock_label": str(obj.get("clock_label") or "").strip(),
+                "clock_hour": int(obj.get("clock")) if obj.get("clock") is not None else None,
+                "confidence": float(obj.get("conf", 0.0)),
+                "center_x": int(obj.get("center_x", 0)),
+                "center_y": int(obj.get("center_y", 0)),
+                "x1": int(obj.get("x1", 0)),
+                "y1": int(obj.get("y1", 0)),
+                "x2": int(obj.get("x2", 0)),
+                "y2": int(obj.get("y2", 0)),
+            }
+        )
+    return items
+
+
 def init_models():
     device = torch.device(vcfg.DEVICE)
     torch.set_num_threads(vcfg.NUM_THREADS)
@@ -412,6 +441,7 @@ def analyze_image_with_calibration(
         return {
             "scene_description": "Không đọc được ảnh.",
             "distance_desc": "",
+            "object_brief": [],
             "calibration_description": "Không đọc được ảnh.",
             "calibration_info": None,
             "timings": timings,
@@ -550,10 +580,13 @@ def analyze_image_with_calibration(
     timings["calib_objects_ms"] = (time.perf_counter() - step_start) * 1000.0
 
     step_start = time.perf_counter()
-    size_filtered_object_data, rejected_by_size = filter_object_data_by_size(object_data)
+    size_filtered_object_data, relabeled_by_size = filter_object_data_by_size(object_data)
     timings["size_filter_ms"] = (time.perf_counter() - step_start) * 1000.0
-    if is_enabled("vision_object_debug", False) and rejected_by_size:
-        logger.info("Size filter dropped %d object(s): %s", len(rejected_by_size), rejected_by_size)
+    if is_enabled("vision_object_debug", False) and relabeled_by_size:
+        logger.info("Size-based relabel applied to %d object(s): %s", len(relabeled_by_size), relabeled_by_size)
+    if is_enabled("vision_object_debug", False):
+        logger.info("Task2 object_data: %s", _format_object_data_for_log(object_data))
+        logger.info("Task2 size_filtered_object_data: %s", _format_object_data_for_log(size_filtered_object_data))
 
     step_start = time.perf_counter()
     debug_objects = filter_objects(
@@ -566,6 +599,16 @@ def analyze_image_with_calibration(
         max_depth_m=vcfg.MAX_DEPTH_M,
         object_limit=vcfg.DEBUG_IMAGE_MAX_OBJECTS,
     )
+    response_objects = filter_objects(
+        size_filtered_object_data,
+        resolved_focal,
+        h,
+        w,
+        conf_threshold=vcfg.CONF_THRESHOLD,
+        min_depth_m=vcfg.MIN_DEPTH_M,
+        max_depth_m=vcfg.MAX_DEPTH_M,
+        object_limit=max(len(size_filtered_object_data), 1),
+    )
     valid_objects = filter_objects(
         size_filtered_object_data,
         resolved_focal,
@@ -577,6 +620,9 @@ def analyze_image_with_calibration(
         object_limit=vcfg.DESCRIPTION_MAX_OBJECTS,
     )
     timings["filter_ms"] = (time.perf_counter() - step_start) * 1000.0
+    object_brief = build_object_brief(response_objects)
+    if is_enabled("vision_object_debug", False):
+        logger.info("Task2 valid_objects: %s", _format_valid_objects_for_log(valid_objects))
 
     if not valid_objects:
         timings["scene_ms"] = 0.0
@@ -585,6 +631,7 @@ def analyze_image_with_calibration(
         return {
             "scene_description": "Không phát hiện được vật thể hợp lệ để mô tả.",
             "distance_desc": "",
+            "object_brief": object_brief,
             "calibration_description": depth_result["calibration_description"],
             "calibration_info": depth_result["calibration_info"],
             "timings": timings,
@@ -608,6 +655,7 @@ def analyze_image_with_calibration(
                 "Không thấy vật nào khác xung quanh."
             ),
             "distance_desc": distance_desc,
+            "object_brief": object_brief,
             "calibration_description": depth_result["calibration_description"],
             "calibration_info": depth_result["calibration_info"],
             "timings": timings,
@@ -625,6 +673,7 @@ def analyze_image_with_calibration(
     return {
         "scene_description": description,
         "distance_desc": distance_desc,
+        "object_brief": object_brief,
         "calibration_description": depth_result["calibration_description"],
         "calibration_info": depth_result["calibration_info"],
         "timings": timings,

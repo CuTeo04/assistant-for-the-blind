@@ -238,10 +238,12 @@ async def process_audio(
         if api_string == "THIET_LAP_CAU_HINH":
             description = vision_result["calibration_description"]
             distance_desc = ""
+            object_brief = []
             calibration_info = vision_result["calibration_info"]
         else:
             description = vision_result["scene_description"]
             distance_desc = vision_result["distance_desc"]
+            object_brief = vision_result.get("object_brief", [])
             calibration_info = None
         timings = vision_result["timings"]
 
@@ -337,6 +339,7 @@ async def process_audio(
             api_string,
             distance_desc,
             description,
+            object_brief,
         )
         if selected_description != description and is_enabled("request_summary", True):
             logger.info(
@@ -354,6 +357,7 @@ async def process_audio(
                 transcript,
                 distance_desc,
                 selected_description,
+                object_brief,
                 model=tcfg.LLM_MODEL,
                 max_tokens=tcfg.MAX_TOKENS,
                 temperature=tcfg.TEMPERATURE,

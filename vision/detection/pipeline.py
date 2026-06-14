@@ -13,7 +13,12 @@ from .backends import ensure_detector_backend
 logger = logging.getLogger("voice_server.vision")
 SEMANTIC_MERGE_LABEL_GROUPS = (
     frozenset({"electric kettle", "kettle", "cooking pot"}),
+    frozenset({"cabinet", "shelf"}),
 )
+SEMANTIC_MERGE_LABEL_PRIORITY = {
+    "cabinet": 1,
+    "shelf": 0,
+}
 SEMANTIC_MERGE_IOU_THRESHOLD = 0.65
 SEMANTIC_MERGE_CONTAINMENT_THRESHOLD = 0.80
 
@@ -347,6 +352,10 @@ def _semantic_group_for_label(label: str) -> str:
     return normalized
 
 
+def _semantic_label_priority(label: str) -> int:
+    return SEMANTIC_MERGE_LABEL_PRIORITY.get(str(label).strip().lower(), 0)
+
+
 def _should_merge_records(current: dict, candidate: dict, iou_threshold: float) -> bool:
     current_box = record_to_box(current)
     candidate_box = record_to_box(candidate)
@@ -382,6 +391,7 @@ def merge_detection_records(
         records = sorted(
             records,
             key=lambda item: (
+                _semantic_label_priority(item["label"]),
                 item["conf"],
                 1 if item.get("source") == "yolo" else 0,
             ),

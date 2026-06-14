@@ -17,6 +17,18 @@ DIRECT_CONFIG_COMMANDS = (
     "thiet lap cau hinh",
 )
 
+DIRECT_INTENT_PATTERNS = (
+    ("ben trai co gi", "O_BEN_TRAI_CO_GI"),
+    ("phia ben trai co gi", "O_BEN_TRAI_CO_GI"),
+    ("o ben trai co gi", "O_BEN_TRAI_CO_GI"),
+    ("ben phai co gi", "O_BEN_PHAI_CO_GI"),
+    ("phia ben phai co gi", "O_BEN_PHAI_CO_GI"),
+    ("o ben phai co gi", "O_BEN_PHAI_CO_GI"),
+    ("phia duoi co gi", "O_PHIA_DUOI_CO_GI"),
+    ("o phia duoi co gi", "O_PHIA_DUOI_CO_GI"),
+    ("ben duoi co gi", "O_PHIA_DUOI_CO_GI"),
+)
+
 
 def init_client(api_key: str, base_url: str):
     return OpenAI(api_key=api_key, base_url=base_url)
@@ -89,6 +101,12 @@ def normalize_api_output(raw_text: str) -> str:
         return "THIET_LAP_CAU_HINH"
     if "O_PHIA_TRUOC_CO_GI" in text_up:
         return "O_PHIA_TRUOC_CO_GI"
+    if "O_BEN_TRAI_CO_GI" in text_up:
+        return "O_BEN_TRAI_CO_GI"
+    if "O_BEN_PHAI_CO_GI" in text_up:
+        return "O_BEN_PHAI_CO_GI"
+    if "O_PHIA_DUOI_CO_GI" in text_up:
+        return "O_PHIA_DUOI_CO_GI"
 
     return "KHONG_XAC_DINH"
 
@@ -103,6 +121,9 @@ def _normalize_transcript_text(text: str) -> str:
 
 def _match_direct_intent(transcript: str) -> str | None:
     normalized = _normalize_transcript_text(transcript)
+    for phrase, api in DIRECT_INTENT_PATTERNS:
+        if normalized == phrase:
+            return api
     for command in DIRECT_CONFIG_COMMANDS:
         if command in normalized:
             return "THIET_LAP_CAU_HINH"
@@ -124,6 +145,12 @@ def format_command_response(api_string: str) -> str:
         return "Mở bảng thiết lập cấu hình."
     if "O_PHIA_TRUOC_CO_GI" in api_string:
         return "Bật camera quét phía trước."
+    if "O_BEN_TRAI_CO_GI" in api_string:
+        return "Bật camera quét bên trái."
+    if "O_BEN_PHAI_CO_GI" in api_string:
+        return "Bật camera quét bên phải."
+    if "O_PHIA_DUOI_CO_GI" in api_string:
+        return "Bật camera quét phía dưới."
     return "Lệnh không xác định."
 
 

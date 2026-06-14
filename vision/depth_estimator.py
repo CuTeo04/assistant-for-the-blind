@@ -37,8 +37,14 @@ class DepthAnythingOnnx:
             raise FileNotFoundError(f"Depth Anything V2 ONNX not found at: {onnx_path}")
 
         self.input_size = input_size
+        session_options = ort.SessionOptions()
+        if cfg.DA2_ONNX_INTRA_OP_THREADS is not None:
+            session_options.intra_op_num_threads = int(cfg.DA2_ONNX_INTRA_OP_THREADS)
+        if cfg.DA2_ONNX_INTER_OP_THREADS is not None:
+            session_options.inter_op_num_threads = int(cfg.DA2_ONNX_INTER_OP_THREADS)
         self.session = ort.InferenceSession(
             onnx_path,
+            sess_options=session_options,
             providers=["CPUExecutionProvider"],
         )
         self.input_name = self.session.get_inputs()[0].name

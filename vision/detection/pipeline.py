@@ -136,6 +136,51 @@ def build_center_tile_meta(
     return tiles
 
 
+def _build_full_and_tile_inputs(
+    img: np.ndarray,
+    *,
+    include_full: bool,
+    tiled_enabled: bool,
+    tile_size: int,
+    overlap: float,
+    tile_mode: str,
+    center_tile_count: int,
+) -> list[dict]:
+    img_h, img_w = img.shape[:2]
+    batch_items: list[dict] = []
+    if include_full:
+        batch_items.append({"kind": "full", "image": img})
+
+    if not tiled_enabled:
+        return batch_items
+
+    if tile_mode == "center_batch":
+        tile_meta = build_center_tile_meta(
+            img_h,
+            img_w,
+            tile_size,
+            overlap,
+            center_tile_count,
+        )
+    else:
+        tile_meta = []
+        for y1 in tile_starts(img_h, tile_size, overlap):
+            for x1 in tile_starts(img_w, tile_size, overlap):
+                x2 = min(x1 + tile_size, img_w)
+                y2 = min(y1 + tile_size, img_h)
+                tile_meta.append((x1, y1, x2, y2))
+
+    for x1, y1, x2, y2 in tile_meta:
+        batch_items.append(
+            {
+                "kind": "tile",
+                "image": img[y1:y2, x1:x2],
+                "meta": (x1, y1, x2, y2),
+            }
+        )
+    return batch_items
+
+
 def iou(box: np.ndarray, boxes: np.ndarray) -> np.ndarray:
     x1 = np.maximum(box[0], boxes[:, 0])
     y1 = np.maximum(box[1], boxes[:, 1])
@@ -665,6 +710,164 @@ def detect_tiled_on_original(
 
     tiled_boxes = np.vstack(boxes).astype(np.float32)
     return clip_boxes(tiled_boxes, target_w, target_h)
+
+
+def run_batched_full_tile_pipeline(
+    model,
+    img,
+    conf_threshold: float,
+    *,
+    imgsz=None,
+    device=None,
+    filter_fn=None,
+    redetect_config: dict | None = None,
+    log_prefix: str = "YOLO",
+    return_timings: bool = False,
+    tiled_enabled: bool | None = None,
+    tile_imgsz=None,
+    tile_size: int | None = None,
+    tile_overlap: float | None = None,
+    tile_mode: str | None = None,
+    center_tile_count: int | None = None,
+    max_batch: int | None = None,
+) -> np.ndarray | tuple[np.ndarray, dict[str, float]]:
+    backend = ensure_detector_backend(model, source_name=log_prefix.lower())
+    tiled_enabled = cfg.TILED_ENABLED if tiled_enabled is None else bool(tiled_enabled)
+    tile_size = max(1, int(cfg.TILE_SIZE if tile_size is None else tile_size))
+    tile_overlap = min(max(float(cfg.TILE_OVERLAP if tile_overlap is None else tile_overlap), 0.0), 0.95)
+    tile_mode = str(cfg.TILE_MODE if tile_mode is None else tile_mode).strip().lower()
+    center_tile_count = int(cfg.CENTER_TILE_COUNT if center_tile_count is None else center_tile_count)
+    target_imgsz = imgsz if tile_imgsz is None else tile_imgsz
+    backend_batch = max(1, int(backend.tile_batch_size()))
+    batch_limit = backend_batch if max_batch is None else max(1, min(backend_batch, int(max_batch)))
+    timings: dict[str, float] = {
+        "full_infer_ms": 0.0,
+        "full_filter_ms": 0.0,
+        "tiled_ms": 0.0,
+        "nms_ms": 0.0,
+        "redetect_ms": 0.0,
+        "pipeline_ms": 0.0,
+        "combined_infer_ms": 0.0,
+        "combined_filter_ms": 0.0,
+        "combined_post_ms": 0.0,
+        "combined_batch_size": float(batch_limit),
+        "combined_image_count": 0.0,
+        "combined_tile_count": 0.0,
+    }
+    pipeline_start = time.perf_counter()
+    batch_items = _build_full_and_tile_inputs(
+        img,
+        include_full=True,
+        tiled_enabled=tiled_enabled,
+        tile_size=tile_size,
+        overlap=tile_overlap,
+        tile_mode=tile_mode,
+        center_tile_count=center_tile_count,
+    )
+    timings["combined_image_count"] = float(len(batch_items))
+    timings["combined_tile_count"] = float(max(0, len(batch_items) - 1))
+
+    img_h, img_w = img.shape[:2]
+    full_boxes = np.empty((0, 6), dtype=np.float32)
+    tiled_boxes_list: list[np.ndarray] = []
+    full_total = 0
+    tile_total = 0
+
+    infer_start = time.perf_counter()
+    for start in range(0, len(batch_items), batch_limit):
+        chunk = batch_items[start:start + batch_limit]
+        chunk_images = [item["image"] for item in chunk]
+        chunk_boxes_list = backend.predict_boxes_batch(
+            chunk_images,
+            conf_threshold,
+            imgsz=target_imgsz,
+            device=device,
+        )
+        for item, raw_boxes in zip(chunk, chunk_boxes_list):
+            if item["kind"] == "full":
+                full_total = len(raw_boxes)
+            else:
+                tile_total += len(raw_boxes)
+
+            if filter_fn is not None:
+                raw_boxes = filter_fn(raw_boxes, backend)
+            boxes = raw_boxes.astype(np.float32)
+
+            if item["kind"] == "full":
+                full_boxes = boxes
+                continue
+
+            if boxes.size == 0:
+                continue
+            x1, y1, _x2, _y2 = item["meta"]
+            boxes[:, [0, 2]] += x1
+            boxes[:, [1, 3]] += y1
+            tiled_boxes_list.append(clip_boxes(boxes, img_w, img_h))
+    timings["combined_infer_ms"] = (time.perf_counter() - infer_start) * 1000.0
+    timings["full_infer_ms"] = timings["combined_infer_ms"]
+    timings["tiled_ms"] = timings["combined_infer_ms"]
+
+    filter_start = time.perf_counter()
+    tiled_boxes = (
+        np.vstack(tiled_boxes_list).astype(np.float32)
+        if tiled_boxes_list
+        else np.empty((0, 6), dtype=np.float32)
+    )
+    timings["combined_filter_ms"] = (time.perf_counter() - filter_start) * 1000.0
+    timings["full_filter_ms"] = timings["combined_filter_ms"]
+
+    combined = tiled_boxes if full_boxes.size == 0 else np.vstack([full_boxes, tiled_boxes]).astype(np.float32)
+    if combined.size == 0:
+        step_start = time.perf_counter()
+        final_boxes = redetect_for_nested_candidates(
+            backend,
+            img,
+            combined,
+            config=redetect_config,
+            log_prefix=log_prefix,
+        )
+        timings["redetect_ms"] = (time.perf_counter() - step_start) * 1000.0
+        timings["combined_post_ms"] = timings["redetect_ms"]
+        timings["pipeline_ms"] = (time.perf_counter() - pipeline_start) * 1000.0
+        if is_enabled("vision_detector_debug", True):
+            logger.info(
+                "%s combined full+tile detections: full=%d tiled=%d merged=%d batch_images=%d",
+                log_prefix,
+                full_total,
+                tile_total,
+                len(final_boxes),
+                len(batch_items),
+            )
+        if return_timings:
+            return final_boxes, timings
+        return final_boxes
+
+    step_start = time.perf_counter()
+    merged_boxes = class_aware_nms(combined, cfg.NMS_IOU_THRESHOLD)
+    timings["nms_ms"] = (time.perf_counter() - step_start) * 1000.0
+    step_start = time.perf_counter()
+    final_boxes = redetect_for_nested_candidates(
+        backend,
+        img,
+        merged_boxes,
+        config=redetect_config,
+        log_prefix=log_prefix,
+    )
+    timings["redetect_ms"] = (time.perf_counter() - step_start) * 1000.0
+    timings["combined_post_ms"] = timings["nms_ms"] + timings["redetect_ms"]
+    timings["pipeline_ms"] = (time.perf_counter() - pipeline_start) * 1000.0
+    if is_enabled("vision_detector_debug", True):
+        logger.info(
+            "%s combined full+tile detections: full=%d tiled=%d merged=%d batch_images=%d",
+            log_prefix,
+            full_total,
+            tile_total,
+            len(final_boxes),
+            len(batch_items),
+        )
+    if return_timings:
+        return final_boxes, timings
+    return final_boxes
 
 
 def run_detector_pipeline(

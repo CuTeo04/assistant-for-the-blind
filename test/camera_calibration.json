@@ -1,0 +1,12 @@
+{
+  "focal_length_px": 723.137184602688,
+  "depth_scale": 0.43492076031705035,
+  "hand_depth_raw_m": 0.9886858463287354,
+  "known_distance_m": 0.43,
+  "hand_center": {
+    "x": 132,
+    "y": 598
+  },
+  "pixel_hand_span": 117.72000679578642,
+  "used_default_hand_distance": true
+}

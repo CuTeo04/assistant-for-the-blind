@@ -10,29 +10,49 @@ from log_settings import is_enabled, print_if_enabled
 from vision.config import vision_config as vcfg
 from vision.debug_image import save_vision_debug_image
 from vision.detection.factory import create_detector_service
-from vision.detection.pipeline import merge_detection_records
-from vision.depth_estimator import infer_depth, load_da2_model
+from vision.detection.pipeline import boxes_to_detection_records, merge_detection_records
+from vision.depth_estimator import calibrate_depth, infer_depth, load_da2_model
+from vision.hand_calibrator import (
+    compute_focal_length,
+    detect_hand_landmarks_full_image,
+    init_mediapipe_hands,
+)
+from vision.label_translation import translate_label
 from vision.object_detector import compute_object_size_cm
+from vision.object_size_filter import filter_object_data_by_size
 from vision.scene_builder import build_dll, build_scene_json, filter_objects, generate_description
 
 logger = logging.getLogger("voice_server.vision")
 
 
 def _task2_accounted_ms(timings: dict) -> float:
-    parallel_block_ms = float(timings.get("detector_total_ms", 0.0))
-    post_parallel_ms = sum(
-        float(timings.get(key, 0.0))
-        for key in (
-            "hand_fallback_ms",
-            "focal_fallback_ms",
-            "depth_calib_fallback_ms",
-            "calib_objects_ms",
-            "filter_ms",
-            "debug_image_ms",
-            "scene_ms",
-            "distance_desc_ms",
-        )
+    parallel_block_ms = float(
+        timings.get("parallel_block_ms", timings.get("detector_total_ms", 0.0))
     )
+    post_parallel_keys = [
+        "hand_fallback_ms",
+        "focal_fallback_ms",
+        "depth_calib_fallback_ms",
+        "calib_objects_ms",
+        "size_filter_ms",
+        "filter_ms",
+        "debug_image_ms",
+        "scene_ms",
+        "distance_desc_ms",
+    ]
+    if parallel_block_ms <= 0.0:
+        parallel_block_ms = sum(
+            float(timings.get(key, 0.0))
+            for key in (
+                "depth_ms",
+                "hand_ms",
+                "focal_ms",
+                "depth_calib_ms",
+            )
+        )
+    elif "parallel_block_ms" not in timings:
+        post_parallel_keys.append("depth_calib_ms")
+    post_parallel_ms = sum(float(timings.get(key, 0.0)) for key in post_parallel_keys)
     return float(timings.get("load_resize_ms", 0.0)) + parallel_block_ms + post_parallel_ms
 
 
@@ -40,6 +60,83 @@ def _finalize_task2_timings(timings: dict, total_start: float) -> None:
     timings["total_ms"] = (time.perf_counter() - total_start) * 1000.0
     timings["accounted_ms"] = _task2_accounted_ms(timings)
     timings["unaccounted_ms"] = timings["total_ms"] - timings["accounted_ms"]
+
+
+def _resolve_request_focal_length(focal_length_px: float | None) -> float:
+    if focal_length_px is None:
+        return float(vcfg.FIXED_FOCAL_LENGTH_PX)
+    try:
+        focal = float(focal_length_px)
+    except (TypeError, ValueError):
+        return float(vcfg.FIXED_FOCAL_LENGTH_PX)
+    return focal if focal > 0 else float(vcfg.FIXED_FOCAL_LENGTH_PX)
+
+
+def _resolve_request_depth_scale(depth_scale: float | None) -> float:
+    if depth_scale is None:
+        return float(vcfg.DEFAULT_DEPTH_SCALE)
+    try:
+        scale = float(depth_scale)
+    except (TypeError, ValueError):
+        return float(vcfg.DEFAULT_DEPTH_SCALE)
+    return scale if scale > 0 else float(vcfg.DEFAULT_DEPTH_SCALE)
+
+
+def _build_empty_timings() -> dict:
+    return {
+        "load_resize_ms": 0.0,
+        "yolo_ms": 0.0,
+        "yolo_world_ms": 0.0,
+        "detector_total_ms": 0.0,
+        "detector_merge_ms": 0.0,
+        "detector_overhead_ms": 0.0,
+        "yolo_lane_ms": 0.0,
+        "yolo_world_lane_ms": 0.0,
+        "depth_lane_ms": 0.0,
+        "yolo_lane_gap_ms": 0.0,
+        "yolo_world_lane_gap_ms": 0.0,
+        "depth_lane_gap_ms": 0.0,
+        "yolo_combined_pipeline_ms": 0.0,
+        "yolo_combined_infer_ms": 0.0,
+        "yolo_combined_filter_ms": 0.0,
+        "yolo_combined_post_ms": 0.0,
+        "yolo_combined_batch_size": 0.0,
+        "yolo_combined_image_count": 0.0,
+        "yolo_combined_tile_count": 0.0,
+        "yolo_world_combined_pipeline_ms": 0.0,
+        "yolo_world_combined_infer_ms": 0.0,
+        "yolo_world_combined_filter_ms": 0.0,
+        "yolo_world_combined_post_ms": 0.0,
+        "yolo_world_combined_batch_size": 0.0,
+        "yolo_world_combined_image_count": 0.0,
+        "yolo_world_combined_tile_count": 0.0,
+        "hand_ms": 0.0,
+        "hand_full_ms": 0.0,
+        "hand_fallback_ms": 0.0,
+        "focal_ms": 0.0,
+        "focal_fallback_ms": 0.0,
+        "depth_ms": 0.0,
+        "depth_calib_ms": 0.0,
+        "depth_calib_fallback_ms": 0.0,
+        "calib_objects_ms": 0.0,
+        "size_filter_ms": 0.0,
+        "filter_ms": 0.0,
+        "scene_ms": 0.0,
+        "distance_desc_ms": 0.0,
+        "debug_image_ms": 0.0,
+        "parallel_block_ms": 0.0,
+    }
+
+
+def _known_hand_distance_cm(hand_distance_cm: float | None) -> float:
+    if hand_distance_cm is not None:
+        try:
+            distance_cm = float(hand_distance_cm)
+            if distance_cm > 0:
+                return distance_cm
+        except (TypeError, ValueError):
+            pass
+    return float(vcfg.KNOWN_DISTANCE_CM)
 
 
 def resize_keep_ratio(img, max_size: int):
@@ -114,7 +211,7 @@ def build_distance_description(objects: list[dict]) -> str:
     counts: dict[str, int] = {}
     parts: list[str] = []
     for obj in objects:
-        label = str(obj.get("label", "object"))
+        label = translate_label(str(obj.get("label", "object")))
         counts[label] = counts.get(label, 0) + 1
         name = f"{label} {counts[label]}"
         clock_label = str(obj.get("clock_label") or "").strip()
@@ -133,22 +230,192 @@ def init_models():
 
     print_if_enabled("startup", "Đang tải Depth Anything V2...")
     da_model = load_da2_model(vcfg.DA2_CONFIG, vcfg.DA2_CHECKPOINT, device)
+    print_if_enabled("startup", "Đang tải MediaPipe Hands...")
+    hands_full, hands_crop = init_mediapipe_hands()
 
-    return detector, da_model, None, None
+    return detector, da_model, hands_full, hands_crop
 
 
-def describe_image_with_models(image_path: str, detector, da_model, hands_full, hands_crop):
-    del hands_full, hands_crop
+def _run_depth_calibration_lane(
+    img,
+    da_model,
+    hands_full,
+    hand_distance_cm: float | None = None,
+):
+    lane_start = time.perf_counter()
+    result = {
+        "depth_raw": None,
+        "new_shape": (0, 0),
+        "scale_ratio": 1.0,
+        "depth_ms": 0.0,
+        "hand_ms": 0.0,
+        "hand_full_ms": 0.0,
+        "focal_ms": 0.0,
+        "depth_calib_ms": 0.0,
+        "calibration_info": None,
+        "calibration_description": "Không phát hiện được bàn tay để thiết lập camera.",
+        "lane_ms": 0.0,
+    }
+
+    step_start = time.perf_counter()
+    depth_raw, new_shape, scale_ratio = infer_depth(da_model, img, vcfg.INPUT_SIZE_DEPTH)
+    result["depth_ms"] = (time.perf_counter() - step_start) * 1000.0
+    result["depth_raw"] = depth_raw
+    result["new_shape"] = new_shape
+    result["scale_ratio"] = scale_ratio
+
+    if hands_full is None:
+        result["calibration_description"] = "Không có bộ phát hiện bàn tay để thiết lập camera."
+        result["lane_ms"] = (time.perf_counter() - lane_start) * 1000.0
+        return result
+
+    step_start = time.perf_counter()
+    hand_landmarks, hand_origin, hand_crop_img, hand_full_s = detect_hand_landmarks_full_image(
+        img,
+        hands_full,
+    )
+    result["hand_full_ms"] = hand_full_s * 1000.0
+    result["hand_ms"] = result["hand_full_ms"]
+    if hand_landmarks is None or hand_crop_img is None or hand_origin is None:
+        result["lane_ms"] = (time.perf_counter() - lane_start) * 1000.0
+        return result
+
+    known_distance_cm = _known_hand_distance_cm(hand_distance_cm)
+    focal_length, hand_center, pixel_hand = compute_focal_length(
+        hand_landmarks,
+        hand_crop_img,
+        hand_origin,
+        known_distance_cm=known_distance_cm,
+        real_hand_length_cm=vcfg.REAL_HAND_LENGTH_CM,
+    )
+    result["focal_ms"] = (time.perf_counter() - step_start) * 1000.0
+    if focal_length is None or hand_center is None:
+        result["calibration_description"] = "Không đo được tiêu cự từ bàn tay."
+        result["lane_ms"] = (time.perf_counter() - lane_start) * 1000.0
+        return result
+
+    h, w = img.shape[:2]
+    depth_final = cv2.resize(depth_raw, (w, h))
+    hx = int(np.clip(hand_center[0], 0, w - 1))
+    hy = int(np.clip(hand_center[1], 0, h - 1))
+    raw_hand_depth = float(depth_final[hy, hx])
+    if raw_hand_depth <= 0:
+        result["calibration_description"] = "Không lấy được độ sâu hợp lệ từ vị trí bàn tay."
+        result["lane_ms"] = (time.perf_counter() - lane_start) * 1000.0
+        return result
+
+    step_start = time.perf_counter()
+    _depth_scaled, depth_scale = calibrate_depth(
+        depth_final,
+        raw_hand_depth,
+        known_distance_cm,
+    )
+    result["depth_calib_ms"] = (time.perf_counter() - step_start) * 1000.0
+    result["calibration_info"] = {
+        "focal_length_px": float(focal_length),
+        "depth_scale": float(depth_scale),
+        "hand_depth_raw_m": raw_hand_depth,
+        "known_distance_m": known_distance_cm / 100.0,
+        "hand_center": {"x": hx, "y": hy},
+        "pixel_hand_span": float(pixel_hand),
+        "used_default_hand_distance": hand_distance_cm is None or float(hand_distance_cm) <= 0,
+    }
+    result["calibration_description"] = (
+        "Đã thiết lập camera. "
+        f"Tiêu cự sử dụng {result['calibration_info']['focal_length_px']:.1f} pixel. "
+        f"Hệ số chuẩn hóa depth {result['calibration_info']['depth_scale']:.3f}."
+    )
+    result["lane_ms"] = (time.perf_counter() - lane_start) * 1000.0
+    return result
+
+
+def _run_primary_combined_lane(detector, img):
+    lane_start = time.perf_counter()
+    boxes, timings = detector._run_primary_combined_detection(img)
+    return {
+        "boxes": boxes,
+        "timings": timings,
+        "lane_ms": (time.perf_counter() - lane_start) * 1000.0,
+    }
+
+
+def _run_open_vocab_combined_lane(detector, img, candidate_labels: set[str]):
+    lane_start = time.perf_counter()
+    boxes = np.empty((0, 6), dtype=np.float32)
     timings = {}
+    if vcfg.OPEN_VOCAB_ENABLED and candidate_labels:
+        boxes, timings = detector._run_open_vocab_combined_detection(
+            img,
+            candidate_labels,
+        )
+    return {
+        "boxes": boxes,
+        "timings": timings,
+        "lane_ms": (time.perf_counter() - lane_start) * 1000.0,
+    }
+
+
+def _primary_label_lookup_backend(detector):
+    return detector.primary_backend
+
+
+def _open_vocab_label_lookup_backend(detector):
+    return detector.open_vocab_backend
+
+
+def _open_vocab_records_from_boxes(detector, boxes: np.ndarray, candidate_labels: set[str]) -> list[dict]:
+    if boxes.size == 0 or not candidate_labels:
+        return []
+    label_backend = _open_vocab_label_lookup_backend(detector)
+    if label_backend is None:
+        return []
+    records = boxes_to_detection_records(
+        boxes.astype("float32"),
+        label_backend.label_lookup(),
+        source="yolo_world",
+    )
+    return [
+        record
+        for record in records
+        if record["label"] in candidate_labels and record["label"] not in vcfg.OPEN_VOCAB_EXCLUDE_LABELS
+    ]
+
+
+def analyze_image_with_calibration(
+    image_path: str,
+    detector,
+    da_model,
+    hands_full,
+    hands_crop,
+    focal_length_px: float | None = None,
+    depth_scale: float | None = None,
+    hand_distance_cm: float | None = None,
+):
+    del hands_crop
+    resolved_focal = _resolve_request_focal_length(focal_length_px)
+    resolved_scale = _resolve_request_depth_scale(depth_scale)
+
+    timings = _build_empty_timings()
     total_start = time.perf_counter()
-    logger.info("Task2 start | image=%s", image_path)
+    logger.info(
+        "Task2 calibrated start | image=%s | focal=%.2f | depth_scale=%.4f",
+        image_path,
+        resolved_focal,
+        resolved_scale,
+    )
 
     step_start = time.perf_counter()
     orig = cv2.imread(image_path)
     if orig is None:
         logger.warning("Task2 image read failed | image=%s", image_path)
         _finalize_task2_timings(timings, total_start)
-        return "Không đọc được ảnh.", timings, ""
+        return {
+            "scene_description": "Không đọc được ảnh.",
+            "distance_desc": "",
+            "calibration_description": "Không đọc được ảnh.",
+            "calibration_info": None,
+            "timings": timings,
+        }
 
     img = resize_keep_ratio(orig, vcfg.MAX_SIZE)
     h, w = img.shape[:2]
@@ -162,46 +429,33 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         len(candidate_labels),
     )
 
-    def run_primary():
-        return detector._run_primary_detection(img, orig)
-
-    def run_open_vocab():
-        if detector._open_vocab_label_backend() is None or not vcfg.OPEN_VOCAB_ENABLED or not candidate_labels:
-            return [], 0.0, {}
-        return detector._run_open_vocab_detection(img, candidate_labels, orig)
-
-    def run_depth():
-        result = {
-            "depth_raw": None,
-            "new_shape": (0, 0),
-            "scale_ratio": 1.0,
-            "depth_ms": 0.0,
-        }
-
-        step_start = time.perf_counter()
-        depth_raw, new_shape, scale_ratio = infer_depth(da_model, img, vcfg.INPUT_SIZE_DEPTH)
-        result["depth_ms"] = (time.perf_counter() - step_start) * 1000.0
-        result["depth_raw"] = depth_raw
-        result["new_shape"] = new_shape
-        result["scale_ratio"] = scale_ratio
-        return result
-
     detector_start = time.perf_counter()
-    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="vision-task2") as executor:
-        logger.info("Task2 submit parallel block | primary=%s | open_vocab=%s | depth=%s", True, bool(candidate_labels), True)
-        primary_future = executor.submit(run_primary)
-        open_vocab_future = executor.submit(run_open_vocab)
-        depth_future = executor.submit(run_depth)
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="vision-task2-flat") as executor:
+        primary_future = executor.submit(_run_primary_combined_lane, detector, img)
+        open_vocab_future = executor.submit(_run_open_vocab_combined_lane, detector, img, candidate_labels)
+        depth_future = executor.submit(
+            _run_depth_calibration_lane,
+            img,
+            da_model,
+            hands_full,
+            hand_distance_cm,
+        )
 
-        logger.info("Task2 waiting primary_future")
-        yolo_records, yolo_ms, primary_pipeline_timings = primary_future.result()
-        logger.info("Task2 primary_future done | detections=%d | yolo_ms=%.1f", len(yolo_records), yolo_ms)
-        logger.info("Task2 waiting open_vocab_future")
-        open_vocab_records, yolo_world_ms, open_vocab_pipeline_timings = open_vocab_future.result()
-        logger.info("Task2 open_vocab_future done | detections=%d | yolo_world_ms=%.1f", len(open_vocab_records), yolo_world_ms)
-        logger.info("Task2 waiting depth_future")
+        primary_result = primary_future.result()
+        open_vocab_result = open_vocab_future.result()
         depth_result = depth_future.result()
-        logger.info("Task2 depth_future done | depth_ms=%.1f | new_shape=%s", depth_result["depth_ms"], depth_result["new_shape"])
+    primary_timings = primary_result["timings"]
+    primary_boxes = primary_result["boxes"]
+    open_vocab_timings = open_vocab_result["timings"]
+    open_vocab_boxes = open_vocab_result["boxes"]
+
+    primary_label_backend = _primary_label_lookup_backend(detector)
+    yolo_records = boxes_to_detection_records(
+        primary_boxes,
+        primary_label_backend.label_lookup() if primary_label_backend is not None else {},
+        source="yolo",
+    )
+    open_vocab_records = _open_vocab_records_from_boxes(detector, open_vocab_boxes, candidate_labels)
 
     merge_start = time.perf_counter()
     boxes = merge_detection_records(
@@ -213,56 +467,69 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
     detector_total_ms = (time.perf_counter() - detector_start) * 1000.0
 
     timings["open_vocab_prompt_ms"] = prompt_ms
-    timings["yolo_ms"] = yolo_ms
-    timings["yolo_world_ms"] = yolo_world_ms
+    timings["yolo_ms"] = float(primary_result["lane_ms"])
+    timings["yolo_world_ms"] = float(open_vocab_result["lane_ms"])
     timings["detector_merge_ms"] = detector_merge_ms
     timings["detector_total_ms"] = detector_total_ms
     timings["detector_overhead_ms"] = max(
         0.0,
-        detector_total_ms - max(yolo_ms, yolo_world_ms) - detector_merge_ms,
+        detector_total_ms
+        - max(float(primary_result["lane_ms"]), float(open_vocab_result["lane_ms"]))
+        - detector_merge_ms,
     )
-    for key, value in primary_pipeline_timings.items():
-        timings[f"yolo_{key}"] = value
-    for key, value in open_vocab_pipeline_timings.items():
-        timings[f"yolo_world_{key}"] = value
+    timings["yolo_lane_ms"] = float(primary_result["lane_ms"])
+    timings["yolo_world_lane_ms"] = float(open_vocab_result["lane_ms"])
+    timings["depth_lane_ms"] = float(depth_result["lane_ms"])
+    timings["parallel_block_ms"] = max(detector_total_ms, timings["depth_lane_ms"])
+
+    timings["yolo_combined_pipeline_ms"] = float(primary_timings.get("pipeline_ms", 0.0))
+    timings["yolo_combined_infer_ms"] = float(primary_timings.get("combined_infer_ms", 0.0))
+    timings["yolo_combined_filter_ms"] = float(primary_timings.get("combined_filter_ms", 0.0))
+    timings["yolo_combined_post_ms"] = float(primary_timings.get("combined_post_ms", 0.0))
+    timings["yolo_combined_batch_size"] = float(primary_timings.get("combined_batch_size", 0.0))
+    timings["yolo_combined_image_count"] = float(primary_timings.get("combined_image_count", 0.0))
+    timings["yolo_combined_tile_count"] = float(primary_timings.get("combined_tile_count", 0.0))
+    timings["yolo_redetect_ms"] = float(primary_timings.get("redetect_ms", 0.0))
+    timings["yolo_nms_ms"] = float(primary_timings.get("nms_ms", 0.0))
+    timings["yolo_lane_gap_ms"] = max(
+        0.0,
+        timings["yolo_lane_ms"] - timings["yolo_combined_pipeline_ms"],
+    )
+
+    timings["yolo_world_combined_pipeline_ms"] = float(open_vocab_timings.get("pipeline_ms", 0.0))
+    timings["yolo_world_combined_infer_ms"] = float(open_vocab_timings.get("combined_infer_ms", 0.0))
+    timings["yolo_world_combined_filter_ms"] = float(open_vocab_timings.get("combined_filter_ms", 0.0))
+    timings["yolo_world_combined_post_ms"] = float(open_vocab_timings.get("combined_post_ms", 0.0))
+    timings["yolo_world_combined_batch_size"] = float(open_vocab_timings.get("combined_batch_size", 0.0))
+    timings["yolo_world_combined_image_count"] = float(open_vocab_timings.get("combined_image_count", 0.0))
+    timings["yolo_world_combined_tile_count"] = float(open_vocab_timings.get("combined_tile_count", 0.0))
+    timings["yolo_world_redetect_ms"] = float(open_vocab_timings.get("redetect_ms", 0.0))
+    timings["yolo_world_nms_ms"] = float(open_vocab_timings.get("nms_ms", 0.0))
+    timings["yolo_world_lane_gap_ms"] = max(
+        0.0,
+        timings["yolo_world_lane_ms"] - timings["yolo_world_combined_pipeline_ms"],
+    )
+
     timings["depth_ms"] = depth_result["depth_ms"]
-    timings["hand_full_ms"] = 0.0
-    timings["hand_fallback_ms"] = 0.0
-    timings["focal_fallback_ms"] = 0.0
-    timings["depth_calib_ms"] = 0.0
-    timings["depth_calib_fallback_ms"] = 0.0
-    timings["focal_ms"] = 0.0
-    timings["debug_image_ms"] = 0.0
-
-    if open_vocab_records and is_enabled("vision_detector_debug", True):
-        labels = sorted({record["label"] for record in open_vocab_records})
-        logger.info(
-            "YOLO-World extra detections outside YOLO labels: labels=%s count=%d merged_total=%d",
-            labels,
-            len(open_vocab_records),
-            len(boxes),
-        )
-    if is_enabled("vision_detector_debug", True):
-        logger.info(
-            "Detector latency breakdown: total=%.1f ms | yolo=%.1f ms | yolo_world=%.1f ms | merge=%.1f ms | overhead=%.1f ms",
-            timings["detector_total_ms"],
-            timings["yolo_ms"],
-            timings["yolo_world_ms"],
-            timings["detector_merge_ms"],
-            timings["detector_overhead_ms"],
-        )
-        logger.info(
-            "Detections after detector pipeline%s%s merge: %s",
-            "+tiled" if vcfg.TILED_ENABLED else "",
-            "+YOLO-World" if vcfg.OPEN_VOCAB_ENABLED and detector._open_vocab_label_backend() is not None else "",
-            _format_detection_boxes_for_log(boxes),
-        )
-
-    timings["hand_ms"] = 0.0
-    focal_length = vcfg.FIXED_FOCAL_LENGTH_PX
+    timings["hand_ms"] = depth_result["hand_ms"]
+    timings["hand_full_ms"] = depth_result["hand_full_ms"]
+    timings["focal_ms"] = depth_result["focal_ms"]
+    timings["depth_calib_ms"] = depth_result["depth_calib_ms"]
+    timings["depth_lane_gap_ms"] = max(
+        0.0,
+        timings["depth_lane_ms"]
+        - timings["depth_ms"]
+        - timings["hand_ms"]
+        - timings["focal_ms"]
+        - timings["depth_calib_ms"],
+    )
 
     depth_raw = depth_result["depth_raw"]
+    depth_resize_start = time.perf_counter()
     depth_final = cv2.resize(depth_raw, (w, h))
+    if resolved_scale != 1.0:
+        depth_final = depth_final * resolved_scale
+    timings["depth_calib_fallback_ms"] = (time.perf_counter() - depth_resize_start) * 1000.0
 
     step_start = time.perf_counter()
     object_data = []
@@ -274,27 +541,24 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         x2 = int(det["x2"])
         y2 = int(det["y2"])
         label = str(det["label"])
-
         cx = np.clip(int((x1 + x2) / 2), 0, w - 1)
         cy = np.clip(int((y1 + y2) / 2), 0, h - 1)
-
         depth_m = float(depth_final[cy, cx])
-        real_w_cm, real_h_cm = compute_object_size_cm((x1, y1, x2, y2), depth_m, focal_length)
+        real_w_cm, real_h_cm = compute_object_size_cm((x1, y1, x2, y2), depth_m, resolved_focal)
         det_box = np.asarray([x1, y1, x2, y2, float(det["conf"]), 0.0], dtype=np.float32)
         object_data.append((det_box, label, depth_m, real_w_cm, real_h_cm))
-
     timings["calib_objects_ms"] = (time.perf_counter() - step_start) * 1000.0
-    if is_enabled("vision_object_debug", True):
-        logger.info(
-            "YOLO detections after conf>=%.2f and depth calibration: %s",
-            vcfg.CONF_THRESHOLD,
-            _format_object_data_for_log(object_data),
-        )
+
+    step_start = time.perf_counter()
+    size_filtered_object_data, rejected_by_size = filter_object_data_by_size(object_data)
+    timings["size_filter_ms"] = (time.perf_counter() - step_start) * 1000.0
+    if is_enabled("vision_object_debug", False) and rejected_by_size:
+        logger.info("Size filter dropped %d object(s): %s", len(rejected_by_size), rejected_by_size)
 
     step_start = time.perf_counter()
     debug_objects = filter_objects(
-        object_data,
-        focal_length,
+        size_filtered_object_data,
+        resolved_focal,
         h,
         w,
         conf_threshold=vcfg.CONF_THRESHOLD,
@@ -303,8 +567,8 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         object_limit=vcfg.DEBUG_IMAGE_MAX_OBJECTS,
     )
     valid_objects = filter_objects(
-        object_data,
-        focal_length,
+        size_filtered_object_data,
+        resolved_focal,
         h,
         w,
         conf_threshold=vcfg.CONF_THRESHOLD,
@@ -313,35 +577,24 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         object_limit=vcfg.DESCRIPTION_MAX_OBJECTS,
     )
     timings["filter_ms"] = (time.perf_counter() - step_start) * 1000.0
-    if is_enabled("vision_object_debug", True):
-        logger.info(
-            "Debug objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
-            vcfg.MIN_DEPTH_M,
-            vcfg.MAX_DEPTH_M,
-            vcfg.DEBUG_IMAGE_MAX_OBJECTS,
-            _format_valid_objects_for_log(debug_objects),
-        )
-        logger.info(
-            "Description objects after filter (depth %.2f-%.2fm, max_objects=%d): %s",
-            vcfg.MIN_DEPTH_M,
-            vcfg.MAX_DEPTH_M,
-            vcfg.DESCRIPTION_MAX_OBJECTS,
-            _format_valid_objects_for_log(valid_objects),
-        )
+
     if not valid_objects:
         timings["scene_ms"] = 0.0
         timings["distance_desc_ms"] = 0.0
-        logger.info("Task2 end | no valid objects")
         _finalize_task2_timings(timings, total_start)
-        return "Không phát hiện được vật thể hợp lệ để mô tả.", timings, ""
+        return {
+            "scene_description": "Không phát hiện được vật thể hợp lệ để mô tả.",
+            "distance_desc": "",
+            "calibration_description": depth_result["calibration_description"],
+            "calibration_info": depth_result["calibration_info"],
+            "timings": timings,
+        }
+
     if is_enabled("vision_debug_image", True) and debug_objects:
         debug_start = time.perf_counter()
-        debug_image_path = save_vision_debug_image(image_path, orig, debug_objects, (h, w))
+        save_vision_debug_image(image_path, orig, debug_objects, (h, w))
         timings["debug_image_ms"] = (time.perf_counter() - debug_start) * 1000.0
-        if debug_image_path:
-            logger.info("Vision debug image saved: %s", debug_image_path)
-        else:
-            logger.warning("Vision debug image could not be created for %s", image_path)
+
     if len(valid_objects) == 1:
         timings["scene_ms"] = 0.0
         distance_start = time.perf_counter()
@@ -349,13 +602,16 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
         timings["distance_desc_ms"] = (time.perf_counter() - distance_start) * 1000.0
         only_obj = valid_objects[0]
         _finalize_task2_timings(timings, total_start)
-        logger.info("Task2 end | single valid object | label=%s", only_obj["label"])
-        return (
-            f"Truoc mat la cai {only_obj['label']}, cach {only_obj['Z']:.1f}m. "
-            "Không thấy vật nào khác xung quanh.",
-            timings,
-            distance_desc,
-        )
+        return {
+            "scene_description": (
+                f"Trước mặt là cái {only_obj['label']}, cách {only_obj['Z']:.1f}m. "
+                "Không thấy vật nào khác xung quanh."
+            ),
+            "distance_desc": distance_desc,
+            "calibration_description": depth_result["calibration_description"],
+            "calibration_info": depth_result["calibration_info"],
+            "timings": timings,
+        }
 
     scene_start = time.perf_counter()
     dll_head = build_dll(valid_objects)
@@ -366,5 +622,142 @@ def describe_image_with_models(image_path: str, detector, da_model, hands_full, 
     distance_desc = build_distance_description(valid_objects)
     timings["distance_desc_ms"] = (time.perf_counter() - distance_start) * 1000.0
     _finalize_task2_timings(timings, total_start)
-    logger.info("Task2 end | multi object | valid_objects=%d", len(valid_objects))
-    return description, timings, distance_desc
+    return {
+        "scene_description": description,
+        "distance_desc": distance_desc,
+        "calibration_description": depth_result["calibration_description"],
+        "calibration_info": depth_result["calibration_info"],
+        "timings": timings,
+    }
+
+
+def calibrate_camera_with_hand(
+    image_path: str,
+    da_model,
+    hands_full,
+    hands_crop,
+    hand_distance_cm: float | None = None,
+):
+    del hands_crop
+    timings = _build_empty_timings()
+    total_start = time.perf_counter()
+    logger.info("Camera setup start | image=%s", image_path)
+
+    step_start = time.perf_counter()
+    orig = cv2.imread(image_path)
+    if orig is None:
+        logger.warning("Camera setup image read failed | image=%s", image_path)
+        _finalize_task2_timings(timings, total_start)
+        return "Không đọc được ảnh.", timings, None
+
+    img = resize_keep_ratio(orig, vcfg.MAX_SIZE)
+    h, w = img.shape[:2]
+    timings["load_resize_ms"] = (time.perf_counter() - step_start) * 1000.0
+
+    step_start = time.perf_counter()
+    depth_raw, _new_shape, _scale_ratio = infer_depth(da_model, img, vcfg.INPUT_SIZE_DEPTH)
+    timings["depth_ms"] = (time.perf_counter() - step_start) * 1000.0
+    depth_final = cv2.resize(depth_raw, (w, h))
+
+    step_start = time.perf_counter()
+    hand_landmarks, hand_origin, hand_crop_img, hand_full_s = detect_hand_landmarks_full_image(
+        img,
+        hands_full,
+    )
+    timings["hand_full_ms"] = hand_full_s * 1000.0
+    timings["hand_ms"] = timings["hand_full_ms"]
+    if hand_landmarks is None or hand_crop_img is None or hand_origin is None:
+        logger.info("Camera setup end | no hand detected")
+        _finalize_task2_timings(timings, total_start)
+        return "Không phát hiện được bàn tay để thiết lập camera.", timings, None
+
+    known_distance_cm = (
+        float(hand_distance_cm)
+        if hand_distance_cm is not None and float(hand_distance_cm) > 0
+        else float(vcfg.KNOWN_DISTANCE_CM)
+    )
+    focal_length, hand_center, pixel_hand = compute_focal_length(
+        hand_landmarks,
+        hand_crop_img,
+        hand_origin,
+        known_distance_cm=known_distance_cm,
+        real_hand_length_cm=vcfg.REAL_HAND_LENGTH_CM,
+    )
+    if focal_length is None or hand_center is None:
+        logger.warning("Camera setup invalid hand span | pixel_hand=%s", pixel_hand)
+        _finalize_task2_timings(timings, total_start)
+        return "Không đo được tiêu cự từ bàn tay.", timings, None
+    timings["focal_ms"] = (time.perf_counter() - step_start) * 1000.0
+
+    hx = int(np.clip(hand_center[0], 0, w - 1))
+    hy = int(np.clip(hand_center[1], 0, h - 1))
+    raw_hand_depth = float(depth_final[hy, hx])
+    if raw_hand_depth <= 0:
+        logger.warning("Camera setup invalid hand depth | depth=%s", raw_hand_depth)
+        _finalize_task2_timings(timings, total_start)
+        return "Không lấy được độ sâu hợp lệ từ vị trí bàn tay.", timings, None
+
+    depth_calib_start = time.perf_counter()
+    _depth_scaled, depth_scale = calibrate_depth(
+        depth_final,
+        raw_hand_depth,
+        known_distance_cm,
+    )
+    timings["depth_calib_ms"] = (time.perf_counter() - depth_calib_start) * 1000.0
+
+    calibration_info = {
+        "focal_length_px": float(focal_length),
+        "depth_scale": float(depth_scale),
+        "hand_depth_raw_m": raw_hand_depth,
+        "known_distance_m": known_distance_cm / 100.0,
+        "hand_center": {"x": hx, "y": hy},
+        "pixel_hand_span": float(pixel_hand),
+        "used_default_hand_distance": hand_distance_cm is None or float(hand_distance_cm) <= 0,
+    }
+
+    _finalize_task2_timings(timings, total_start)
+    logger.info(
+        "Camera setup end | focal=%.2f | depth_scale=%.4f | hand_depth_raw=%.3f",
+        calibration_info["focal_length_px"],
+        calibration_info["depth_scale"],
+        calibration_info["hand_depth_raw_m"],
+    )
+    description = (
+        "Đã thiết lập camera. "
+        f"Tiêu cự sử dụng {calibration_info['focal_length_px']:.1f} pixel. "
+        f"Hệ số chuẩn hóa depth {calibration_info['depth_scale']:.3f}."
+    )
+    return description, timings, calibration_info
+
+
+def describe_image_with_models(image_path: str, detector, da_model, hands_full, hands_crop):
+    return describe_image_with_calibration(
+        image_path,
+        detector,
+        da_model,
+        hands_full,
+        hands_crop,
+        focal_length_px=vcfg.FIXED_FOCAL_LENGTH_PX,
+        depth_scale=vcfg.DEFAULT_DEPTH_SCALE,
+    )
+
+
+def describe_image_with_calibration(
+    image_path: str,
+    detector,
+    da_model,
+    hands_full,
+    hands_crop,
+    focal_length_px: float | None = None,
+    depth_scale: float | None = None,
+):
+    bundle = analyze_image_with_calibration(
+        image_path,
+        detector,
+        da_model,
+        hands_full,
+        hands_crop,
+        focal_length_px=focal_length_px,
+        depth_scale=depth_scale,
+    )
+    return bundle["scene_description"], bundle["timings"], bundle["distance_desc"]

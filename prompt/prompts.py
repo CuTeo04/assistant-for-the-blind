@@ -3,7 +3,7 @@
 STT_WHISPER_PROMPT = (
     "Đây là hệ thống trong nhà điều khiển bằng giọng nói cho người khiếm thị. "
     "Người dùng chỉ nói một trong các lệnh sau: "
-    "thiết lập cấu hình, ở phía trước có gì, tôi muốn tìm, tôi muốn lấy, "
+    "thiết lập camera, thiết lập cấu hình, ở phía trước có gì, tôi muốn tìm, tôi muốn lấy, "
     "tôi muốn đến, cho tôi lấy, đưa tôi đến...\n\n"
     "Các đồ vật trong nhà thường gặp: "
     "tủ lạnh, ti vi, tivi, TV, ghế sofa, ghế, bàn, giường, laptop, "
@@ -25,6 +25,7 @@ STT_CLASSIFY_SYSTEM_PROMPT = (
     "Ví dụ:\n"
     "API: TIM_DEN_LAY: cái ghế\n\n"
     "API: O_PHIA_TRUOC_CO_GI\n\n"
+    "API: THIET_LAP_CAU_HINH cho các câu như thiết lập camera hoặc thiết lập cấu hình\n\n"
     "API: THIET_LAP_CAU_HINH\n\n"
     "API: KHONG_LIEN_QUAN"
 )

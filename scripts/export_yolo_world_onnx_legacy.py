@@ -50,7 +50,7 @@ def parse_args():
         default=int(vision_cfg.get("yolo_imgsz", vision_cfg.get("tile_size", 960))),
         help="Export image size.",
     )
-    parser.add_argument("--batch", type=int, default=1, help="Static export batch size")
+    parser.add_argument("--batch", type=int, default=3, help="Static export batch size")
     parser.add_argument("--opset", type=int, default=17, help="ONNX opset version override")
     parser.add_argument("--device", default="cpu", help="Device used during export")
     parser.add_argument(

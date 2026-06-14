@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument("--weights", default="models/yolo11s.pt", help="Input YOLO weights path")
     parser.add_argument("--output", default="models/YOLO11s.onnx", help="Output ONNX path")
     parser.add_argument("--imgsz", type=int, default=960, help="Export image size")
-    parser.add_argument("--batch", type=int, default=1, help="Static export batch size")
+    parser.add_argument("--batch", type=int, default=3, help="Static export batch size")
     parser.add_argument("--opset", type=int, default=17, help="ONNX opset version")
     parser.add_argument("--device", default="cpu", help="Device used during export")
     parser.add_argument(

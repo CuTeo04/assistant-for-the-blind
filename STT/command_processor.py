@@ -1,6 +1,7 @@
 import time
 
 import re
+import unicodedata
 
 from log_settings import print_if_enabled
 from openai import OpenAI
@@ -10,6 +11,11 @@ from prompt.prompts import STT_CLASSIFY_SYSTEM_PROMPT
 
 # Keep local name for minimal changes in call sites.
 LLM_SYSTEM_PROMPT = STT_CLASSIFY_SYSTEM_PROMPT
+
+DIRECT_CONFIG_COMMANDS = (
+    "thiet lap camera",
+    "thiet lap cau hinh",
+)
 
 
 def init_client(api_key: str, base_url: str):
@@ -85,6 +91,22 @@ def normalize_api_output(raw_text: str) -> str:
         return "O_PHIA_TRUOC_CO_GI"
 
     return "KHONG_XAC_DINH"
+
+
+def _normalize_transcript_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFD", (text or "").strip())
+    normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+    normalized = normalized.lower().replace("đ", "d")
+    normalized = re.sub(r"[^\w\s]", " ", normalized)
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _match_direct_intent(transcript: str) -> str | None:
+    normalized = _normalize_transcript_text(transcript)
+    for command in DIRECT_CONFIG_COMMANDS:
+        if command in normalized:
+            return "THIET_LAP_CAU_HINH"
+    return None
 
 
 def execute_command(api_string: str):
@@ -179,6 +201,12 @@ def process_voice_command_api(audio_path: str, config=cfg, include_latency: bool
             if include_latency:
                 return "KHONG_XAC_DINH", text, {"whisper_s": whisper_latency, "llm_s": 0.0}
             return "KHONG_XAC_DINH", text
+
+        direct_api = _match_direct_intent(text)
+        if direct_api:
+            if include_latency:
+                return direct_api, text, {"whisper_s": whisper_latency, "llm_s": 0.0}
+            return direct_api, text
 
         llm_text, llm_latency = classify_command(
             client,

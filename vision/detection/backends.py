@@ -11,6 +11,8 @@ import numpy as np
 import onnxruntime as ort
 import torch
 
+from log_settings import is_enabled
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 YOLO_CONFIG_DIR = os.path.join(ROOT_DIR, ".cache", "ultralytics")
 os.makedirs(YOLO_CONFIG_DIR, exist_ok=True)
@@ -249,7 +251,7 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
                 if not self._uses_accelerator():
                     raise
                 logger.warning(
-                    "%s accelerator session failed for %s during %s; retrying on the same providers | attempt=%d providers=%s",
+                    "%s accelerator session failed for %s during %s; retrying on CPU only | attempt=%d providers=%s",
                     self.source_name,
                     self.model_path,
                     reason,
@@ -257,7 +259,8 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
                     self.preferred_providers,
                     exc_info=True,
                 )
-                time.sleep(0.5)
+                self.preferred_providers = ["CPUExecutionProvider"]
+                time.sleep(0.1)
 
     def _reload_session_with_retry(self, reason: str) -> None:
         self.session = self._create_session_with_retry(reason=reason)
@@ -273,6 +276,7 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
         inter_op_num_threads: int | None,
     ) -> ort.SessionOptions:
         options = ort.SessionOptions()
+        options.execution_mode = ort.ExecutionMode.ORT_PARALLEL
         options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         if intra_op_num_threads is not None:
             options.intra_op_num_threads = int(intra_op_num_threads)
@@ -297,7 +301,7 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
                 "No supported ONNX Runtime execution provider is available. "
                 "Expected at least CPUExecutionProvider."
             )
-        if provider_name == "directml":
+        if provider_name in {"directml", "dml"}:
             if "DmlExecutionProvider" not in available:
                 raise RuntimeError(
                     "DirectML provider is not available. Install onnxruntime-directml and ensure the iGPU runtime is visible."
@@ -394,15 +398,16 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
             images = padded_images
 
         input_h, input_w = self._target_hw(imgsz)
-        logger.info(
-            "%s predict_boxes_batch start | images=%d | batch=%d | conf=%.2f | hw=%sx%s",
-            self.source_name,
-            len(images),
-            max_batch,
-            conf_threshold,
-            input_h,
-            input_w,
-        )
+        if is_enabled("yolo_inference_trace", False):
+            logger.info(
+                "%s predict_boxes_batch start | images=%d | batch=%d | conf=%.2f | hw=%sx%s",
+                self.source_name,
+                len(images),
+                max_batch,
+                conf_threshold,
+                input_h,
+                input_w,
+            )
         tensors = []
         for img in images:
             resized = _letterbox_image(img, (input_h, input_w))
@@ -414,19 +419,21 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
         while True:
             attempt += 1
             try:
-                logger.info(
-                    "%s session.run start | attempt=%d | input=%s | batch_shape=%s",
-                    self.source_name,
-                    attempt,
-                    self.input_name,
-                    batch_tensor.shape,
-                )
+                if is_enabled("yolo_inference_trace", False):
+                    logger.info(
+                        "%s session.run start | attempt=%d | input=%s | batch_shape=%s",
+                        self.source_name,
+                        attempt,
+                        self.input_name,
+                        batch_tensor.shape,
+                    )
                 outputs = self.session.run(self.output_names, {self.input_name: batch_tensor})
-                logger.info(
-                    "%s session.run done | attempt=%d",
-                    self.source_name,
-                    attempt,
-                )
+                if is_enabled("yolo_inference_trace", False):
+                    logger.info(
+                        "%s session.run done | attempt=%d",
+                        self.source_name,
+                        attempt,
+                    )
                 break
             except Exception:
                 if not self._uses_accelerator():
@@ -459,7 +466,8 @@ class OnnxRuntimeDetectorBackend(DetectorBackend):
             detections = detections.clone()
             scale_boxes((input_h, input_w), detections[:, :4], img.shape[:2])
             results.append(detections[:, :6].cpu().numpy().astype(np.float32))
-        logger.info("%s predict_boxes_batch done | outputs=%d", self.source_name, len(results))
+        if is_enabled("yolo_inference_trace", False):
+            logger.info("%s predict_boxes_batch done | outputs=%d", self.source_name, len(results))
         return results[:original_count]
 
 

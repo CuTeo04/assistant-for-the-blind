@@ -1,5 +1,15 @@
 import logging
 
+from app_config import get_config
+
+
+def _load_log_settings() -> dict:
+    config = get_config()
+    config_log_settings = config.get("log", {}) if isinstance(config, dict) else {}
+    if not isinstance(config_log_settings, dict):
+        config_log_settings = {}
+    return config_log_settings
+
 
 LOG_SETTINGS = {
     "global_enabled": True,
@@ -7,6 +17,8 @@ LOG_SETTINGS = {
     "healthcheck": True,
     "request_summary": True,
     "vision_detector_debug": False,
+    "vision_detector_breakdown": False,
+    "yolo_inference_trace": False,
     "vision_object_debug": False,
     "vision_debug_image": False,
     "hand_debug": True,
@@ -15,6 +27,8 @@ LOG_SETTINGS = {
     "http_client": True,
     "uvicorn_access": True,
 }
+
+LOG_SETTINGS.update(_load_log_settings())
 
 
 def is_enabled(key: str, default: bool = False) -> bool:

@@ -8,6 +8,7 @@ _cfg = get_config()["vision"]
 REAL_HAND_LENGTH_CM = _cfg["real_hand_length_cm"]
 KNOWN_DISTANCE_CM = _cfg["known_distance_cm"]
 FIXED_FOCAL_LENGTH_PX = float(_cfg.get("fixed_focal_length_px", 800.0))
+DEFAULT_DEPTH_SCALE = float(_cfg.get("default_depth_scale", 1.0))
 MAX_SIZE = _cfg["max_size"]
 DEVICE = _cfg["device"]
 NUM_THREADS = _cfg["num_threads"]
@@ -23,28 +24,13 @@ YOLO_BACKEND = str(_cfg.get("yolo_backend", "ultralytics")).strip().lower()
 YOLO_EXECUTION_PROVIDER = str(_cfg.get("yolo_execution_provider", "cpu")).strip().lower()
 YOLO_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_onnx_intra_op_threads")
 YOLO_ONNX_INTER_OP_THREADS = _cfg.get("yolo_onnx_inter_op_threads")
-YOLO_SPLIT_WORKERS_ENABLED = bool(_cfg.get("yolo_split_workers_enabled", False))
-YOLO_FULL_MODEL_PATH = os.path.join(
-    ROOT_DIR,
-    _cfg.get("yolo_full_model_path", _cfg.get("yolo_onnx_path", "models/YOLO11s.onnx")),
-)
-YOLO_FULL_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_full_onnx_intra_op_threads")
-YOLO_FULL_ONNX_INTER_OP_THREADS = _cfg.get("yolo_full_onnx_inter_op_threads")
-YOLO_TILE_MODEL_PATH = os.path.join(
-    ROOT_DIR,
-    _cfg.get("yolo_tile_model_path", _cfg.get("yolo_onnx_path", "models/YOLO11s.onnx")),
-)
-YOLO_TILE_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_tile_onnx_intra_op_threads")
-YOLO_TILE_ONNX_INTER_OP_THREADS = _cfg.get("yolo_tile_onnx_inter_op_threads")
-YOLO_FULL_EXECUTION_PROVIDER = str(
-    _cfg.get("yolo_full_execution_provider", YOLO_EXECUTION_PROVIDER)
-).strip().lower()
-YOLO_TILE_EXECUTION_PROVIDER = str(
-    _cfg.get("yolo_tile_execution_provider", YOLO_EXECUTION_PROVIDER)
-).strip().lower()
+YOLO_COMBINED_BATCH_ENABLED = bool(_cfg.get("yolo_combined_batch_enabled", False))
+YOLO_COMBINED_MAX_BATCH = int(_cfg.get("yolo_combined_max_batch", 5))
 DA2_CHECKPOINT = os.path.join(ROOT_DIR, _cfg["da2_checkpoint"])
 DA2_ONNX_PATH = os.path.join(ROOT_DIR, _cfg["da2_onnx_path"])
 DA2_USE_ONNX = _cfg["da2_use_onnx"]
+DA2_ONNX_INTRA_OP_THREADS = _cfg.get("da2_onnx_intra_op_threads")
+DA2_ONNX_INTER_OP_THREADS = _cfg.get("da2_onnx_inter_op_threads")
 DA2_DIR = os.path.join(ROOT_DIR, "models", "Depth-Anything-V2")
 DA2_METRIC_DIR = os.path.join(DA2_DIR, "metric_depth")
 DA2_CONFIG = _cfg["da2_config"]
@@ -93,25 +79,8 @@ YOLO_WORLD_BACKEND = str(_cfg.get("yolo_world_backend", "ultralytics")).strip().
 YOLO_WORLD_EXECUTION_PROVIDER = str(_cfg.get("yolo_world_execution_provider", "cpu")).strip().lower()
 YOLO_WORLD_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_world_onnx_intra_op_threads")
 YOLO_WORLD_ONNX_INTER_OP_THREADS = _cfg.get("yolo_world_onnx_inter_op_threads")
-OPEN_VOCAB_SPLIT_WORKERS_ENABLED = bool(_cfg.get("open_vocab_split_workers_enabled", False))
-YOLO_WORLD_FULL_MODEL_PATH = os.path.join(
-    ROOT_DIR,
-    _cfg.get("yolo_world_full_model_path", _cfg.get("yolo_world_model_path", "models/yolov8x-worldv2.onnx")),
-)
-YOLO_WORLD_FULL_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_world_full_onnx_intra_op_threads")
-YOLO_WORLD_FULL_ONNX_INTER_OP_THREADS = _cfg.get("yolo_world_full_onnx_inter_op_threads")
-YOLO_WORLD_TILE_MODEL_PATH = os.path.join(
-    ROOT_DIR,
-    _cfg.get("yolo_world_tile_model_path", _cfg.get("yolo_world_model_path", "models/yolov8x-worldv2.onnx")),
-)
-YOLO_WORLD_TILE_ONNX_INTRA_OP_THREADS = _cfg.get("yolo_world_tile_onnx_intra_op_threads")
-YOLO_WORLD_TILE_ONNX_INTER_OP_THREADS = _cfg.get("yolo_world_tile_onnx_inter_op_threads")
-YOLO_WORLD_FULL_EXECUTION_PROVIDER = str(
-    _cfg.get("yolo_world_full_execution_provider", YOLO_WORLD_EXECUTION_PROVIDER)
-).strip().lower()
-YOLO_WORLD_TILE_EXECUTION_PROVIDER = str(
-    _cfg.get("yolo_world_tile_execution_provider", YOLO_WORLD_EXECUTION_PROVIDER)
-).strip().lower()
+OPEN_VOCAB_COMBINED_BATCH_ENABLED = bool(_cfg.get("open_vocab_combined_batch_enabled", False))
+OPEN_VOCAB_COMBINED_MAX_BATCH = int(_cfg.get("open_vocab_combined_max_batch", 5))
 OPEN_VOCAB_EXTRA_CLASSES = [
     str(label).strip().lower()
     for label in _cfg.get(

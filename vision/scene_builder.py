@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from vision.clock_direction import compute_clock_direction, format_clock_label
+from vision.label_translation import translate_label_with_id
 
 BG_CLASSES = {"wall", "ceiling", "floor", "window"}
 
@@ -281,7 +282,7 @@ def _build_display_name_map(dll: list[SceneNode]) -> dict[tuple[str, int, int, i
             nodes, key=lambda n: (float(n.Z), float(n.X), float(n.Y), int(n.cx), int(n.cy))
         )
         for i, n in enumerate(nodes_sorted, start=1):
-            out[_node_id(n)] = f"{label} {i}"
+            out[_node_id(n)] = f"{translate_label_with_id(label)} {i}".strip()
 
     return out
 

@@ -11,12 +11,15 @@ import sys
 import traceback
 from uuid import uuid4
 
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import JSONResponse
 
 from app_config import get_config
 from log_settings import configure_logging, is_enabled
-from service.vision_pipeline import describe_image_with_models, init_models
+from service.vision_pipeline import (
+    analyze_image_with_calibration,
+    init_models,
+)
 from response.answer_generator import (
     answer_from_api,
     init_client as init_response_client,
@@ -152,7 +155,14 @@ def health_check():
 
 
 @app.post("/process")
-async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(...)):
+async def process_audio(
+    audio: UploadFile = File(...),
+    image: UploadFile = File(...),
+    focal_length_px: float | None = Form(None),
+    f: float | None = Form(None),
+    depth_scale: float | None = Form(None),
+    hand_distance_cm: float | None = Form(None),
+):
     request_id = uuid4().hex[:8]
     req_start = time.perf_counter()
     logger.info(
@@ -188,10 +198,19 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             latency_ms = (time.perf_counter() - start) * 1000.0
             return result, latency_ms
 
+        requested_focal = focal_length_px if focal_length_px is not None else f
+
         def run_vision():
             start = time.perf_counter()
-            result = describe_image_with_models(
-                image_path, detector, da_model, hands_full, hands_crop
+            result = analyze_image_with_calibration(
+                image_path,
+                detector,
+                da_model,
+                hands_full,
+                hands_crop,
+                focal_length_px=requested_focal,
+                depth_scale=depth_scale,
+                hand_distance_cm=hand_distance_cm,
             )
             latency_ms = (time.perf_counter() - start) * 1000.0
             return result, latency_ms
@@ -202,8 +221,8 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             asyncio.to_thread(run_vision),
         )
         parallel_wall_ms = (time.perf_counter() - parallel_start) * 1000.0
+
         api_string, transcript, api_steps = api_result
-        description, timings, distance_desc = vision_result
         if not api_string:
             logger.warning("Task1 returned empty api_string, fallback to KHONG_XAC_DINH")
             api_string = "KHONG_XAC_DINH"
@@ -216,6 +235,16 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             whisper_ms = api_steps.get("whisper_s", 0.0) * 1000.0
             llm_ms = api_steps.get("llm_s", 0.0) * 1000.0
 
+        if api_string == "THIET_LAP_CAU_HINH":
+            description = vision_result["calibration_description"]
+            distance_desc = ""
+            calibration_info = vision_result["calibration_info"]
+        else:
+            description = vision_result["scene_description"]
+            distance_desc = vision_result["distance_desc"]
+            calibration_info = None
+        timings = vision_result["timings"]
+
         if is_enabled("request_summary", True):
             logger.info(
                 "Task1 STT+LLM | api=%s | transcript=%s | total=%.1f ms | whisper=%.1f ms | llm=%.1f ms",
@@ -227,7 +256,7 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             )
 
             logger.info(
-                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f debug_image=%.1f scene=%.1f distance_desc=%.1f | detector_substeps(ms): yolo_full=%.1f yolo_filter=%.1f yolo_tiled=%.1f yolo_nms=%.1f yolo_redetect=%.1f yw_full=%.1f yw_filter=%.1f yw_tiled=%.1f yw_nms=%.1f yw_redetect=%.1f merge=%.1f detector_overhead=%.1f | raw=%s",
+                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f debug_image=%.1f scene=%.1f distance_desc=%.1f | detector(ms): yolo=%.1f(batch=%.0f,images=%.0f,tiles=%.0f,infer=%.1f,post=%.1f,gap=%.1f) yolo_world=%.1f(batch=%.0f,images=%.0f,tiles=%.0f,infer=%.1f,post=%.1f,gap=%.1f) depth=%.1f(depth=%.1f,hand=%.1f,focal=%.1f,depth_calib=%.1f,gap=%.1f) merges(final=%.1f) | raw=%s",
                 vision_latency,
                 timings.get("total_ms", 0.0),
                 timings.get("accounted_ms", 0.0),
@@ -244,25 +273,66 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
                 timings.get("debug_image_ms", 0.0),
                 timings.get("scene_ms", 0.0),
                 timings.get("distance_desc_ms", 0.0),
-                timings.get("yolo_full_infer_ms", 0.0),
-                timings.get("yolo_full_filter_ms", 0.0),
-                timings.get("yolo_tiled_ms", 0.0),
-                timings.get("yolo_nms_ms", 0.0),
-                timings.get("yolo_redetect_ms", 0.0),
-                timings.get("yolo_world_full_infer_ms", 0.0),
-                timings.get("yolo_world_full_filter_ms", 0.0),
-                timings.get("yolo_world_tiled_ms", 0.0),
-                timings.get("yolo_world_nms_ms", 0.0),
-                timings.get("yolo_world_redetect_ms", 0.0),
+                timings.get("yolo_lane_ms", 0.0),
+                timings.get("yolo_combined_batch_size", 0.0),
+                timings.get("yolo_combined_image_count", 0.0),
+                timings.get("yolo_combined_tile_count", 0.0),
+                timings.get("yolo_combined_infer_ms", 0.0),
+                timings.get("yolo_combined_post_ms", timings.get("yolo_nms_ms", 0.0) + timings.get("yolo_redetect_ms", 0.0)),
+                timings.get("yolo_lane_gap_ms", 0.0),
+                timings.get("yolo_world_lane_ms", 0.0),
+                timings.get("yolo_world_combined_batch_size", 0.0),
+                timings.get("yolo_world_combined_image_count", 0.0),
+                timings.get("yolo_world_combined_tile_count", 0.0),
+                timings.get("yolo_world_combined_infer_ms", 0.0),
+                timings.get("yolo_world_combined_post_ms", timings.get("yolo_world_nms_ms", 0.0) + timings.get("yolo_world_redetect_ms", 0.0)),
+                timings.get("yolo_world_lane_gap_ms", 0.0),
+                timings.get("depth_lane_ms", 0.0),
+                timings.get("depth_ms", 0.0),
+                timings.get("hand_ms", 0.0),
+                timings.get("focal_ms", 0.0),
+                timings.get("depth_calib_ms", 0.0),
+                timings.get("depth_lane_gap_ms", 0.0),
                 timings.get("detector_merge_ms", 0.0),
-                timings.get("detector_overhead_ms", 0.0),
                 description,
             )
             logger.info(
-                "Parallel STT+Vision wall=%.1f ms | expected~max(task1,task2)",
+                "Task1+Vision wall=%.1f ms",
                 parallel_wall_ms,
             )
+            if is_enabled("vision_detector_breakdown", False):
+                logger.info(
+                    "Task2 lanes | yolo_lane=%.1f | yolo_world_lane=%.1f | depth_lane=%.1f | detector_total=%.1f | detector_merge=%.1f | detector_overhead=%.1f | parallel_block=%.1f",
+                    timings.get("yolo_lane_ms", 0.0),
+                    timings.get("yolo_world_lane_ms", 0.0),
+                    timings.get("depth_lane_ms", 0.0),
+                    timings.get("detector_total_ms", 0.0),
+                    timings.get("detector_merge_ms", 0.0),
+                    timings.get("detector_overhead_ms", 0.0),
+                    timings.get("parallel_block_ms", 0.0),
+                )
+                logger.info(
+                    "Task2 detector detail | yolo_pipeline=%.1f(infer=%.1f,post=%.1f,batch=%.0f,images=%.0f,tiles=%.0f,nms=%.1f,redetect=%.1f) | yolo_world_pipeline=%.1f(infer=%.1f,post=%.1f,batch=%.0f,images=%.0f,tiles=%.0f,nms=%.1f,redetect=%.1f)",
+                    timings.get("yolo_combined_pipeline_ms", 0.0),
+                    timings.get("yolo_combined_infer_ms", 0.0),
+                    timings.get("yolo_combined_post_ms", timings.get("yolo_nms_ms", 0.0) + timings.get("yolo_redetect_ms", 0.0)),
+                    timings.get("yolo_combined_batch_size", 0.0),
+                    timings.get("yolo_combined_image_count", 0.0),
+                    timings.get("yolo_combined_tile_count", 0.0),
+                    timings.get("yolo_nms_ms", 0.0),
+                    timings.get("yolo_redetect_ms", 0.0),
+                    timings.get("yolo_world_combined_pipeline_ms", 0.0),
+                    timings.get("yolo_world_combined_infer_ms", 0.0),
+                    timings.get("yolo_world_combined_post_ms", timings.get("yolo_world_nms_ms", 0.0) + timings.get("yolo_world_redetect_ms", 0.0)),
+                    timings.get("yolo_world_combined_batch_size", 0.0),
+                    timings.get("yolo_world_combined_image_count", 0.0),
+                    timings.get("yolo_world_combined_tile_count", 0.0),
+                    timings.get("yolo_world_nms_ms", 0.0),
+                    timings.get("yolo_world_redetect_ms", 0.0),
+                )
             logger.info("Distance matrix (camera -> objects): %s", distance_desc)
+            if calibration_info is not None:
+                logger.info("Camera calibration state: %s", calibration_info)
         selected_description = select_raw_description_for_api(
             api_string,
             distance_desc,
@@ -297,6 +367,8 @@ async def process_audio(audio: UploadFile = File(...), image: UploadFile = File(
             smooth_text = selected_description
 
         response = {"api": api_string, "text": smooth_text}
+        if calibration_info is not None:
+            response["camera_calibration"] = calibration_info
         total_ms = (time.perf_counter() - req_start) * 1000.0
         if is_enabled("request_summary", True):
             logger.info("Task3 Response | total=%.1f ms", response_latency)

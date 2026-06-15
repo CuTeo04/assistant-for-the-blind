@@ -20,6 +20,7 @@ def init_client(api_key: str, base_url: str):
 TARGET_LABEL_ALIASES = {
     "ban": {"table", "dining table"},
     "ban an": {"dining table", "table"},
+    "ba lo": {"backpack"},
     "chai": {"bottle"},
     "chen": {"bowl", "cup"},
     "coc": {"cup"},
@@ -41,6 +42,7 @@ TARGET_LABEL_ALIASES = {
 
 YOLO_LABEL_VI = {
     "bed": "giường",
+    "backpack": "ba lô",
     "book": "cuốn sách",
     "bottle": "chai",
     "bowl": "cái chén",
@@ -261,6 +263,14 @@ def _format_target_position_line(target_name: str, info_text: str) -> str:
     return f"Mục tiêu: {target_name}."
 
 
+def _format_hand_distance_text(distance_cm: float | None) -> str:
+    if not isinstance(distance_cm, (int, float)) or distance_cm <= 0:
+        return ""
+    if float(distance_cm) < 100.0:
+        return f"{int(round(float(distance_cm)))}cm"
+    return f"{float(distance_cm) / 100.0:.2f}m"
+
+
 def _target_rank_phrase(index: int, total: int) -> str:
     if total <= 1:
         return "gần nhất"
@@ -330,6 +340,21 @@ def _translate_object_name_with_id(name: str) -> str:
     return f"{translated} {object_id}".strip()
 
 
+def _direct_touch_answer(object_brief: list[dict] | None, target_object: str) -> str:
+    target_objects = _collect_target_objects(object_brief, target_object, limit=1)
+    if not target_objects:
+        return ""
+
+    touched_target = target_objects[0]
+    if not bool(touched_target.get("hand_touching", False)):
+        return ""
+
+    target_name = _translate_object_name_with_id(
+        str(touched_target.get("display_label", touched_target.get("label", target_object)))
+    )
+    return _finalize_answer(f"Bạn đã chạm vào {target_name}.", target_object)
+
+
 def _build_rule_context_for_target(
     api_string: str,
     target_object: str,
@@ -344,8 +369,28 @@ def _build_rule_context_for_target(
     for index, obj in enumerate(target_objects):
         target_name = _translate_object_name_with_id(str(obj.get("display_label", obj.get("label", target_object))))
         rank_phrase = _target_rank_phrase(index, total_targets)
+        hand_reference_valid = bool(obj.get("hand_reference_valid", False))
+        hand_touching = bool(obj.get("hand_touching", False))
+        hand_relation_label = str(obj.get("hand_relation_label") or "").strip()
+        hand_relation_distance_text = _format_hand_distance_text(obj.get("hand_relation_distance_cm"))
         clock_text = str(obj.get("clock_label") or "").strip()
         distance_text = _format_object_distance_text(obj.get("distance_m"))
+        if hand_reference_valid and hand_touching:
+            position_text = f"bạn đã chạm vào {target_name}"
+            if distance_text:
+                position_text += f", vật ở cách bạn {distance_text}"
+            lines.append(f"Mục tiêu {index + 1}: {position_text}.")
+            continue
+
+        if hand_reference_valid and hand_relation_label:
+            position_text = f"{target_name} ở {hand_relation_label} mu bàn tay"
+            if hand_relation_distance_text and hand_relation_label != "chạm":
+                position_text += f" khoảng {hand_relation_distance_text}"
+            if distance_text:
+                position_text += f", cách bạn {distance_text}"
+            lines.append(f"Mục tiêu {index + 1}: {position_text}.")
+            continue
+
         position_text = f"{target_name} ở {rank_phrase}"
         if clock_text:
             position_text += f", {clock_text}"
@@ -709,6 +754,15 @@ def _fallback_answer(
 ) -> str:
     api_upper = (api_string or "").upper()
     if api_upper.startswith("TIM_DEN_LAY"):
+        if _looks_like_target_context(raw_description):
+            first_line = next(
+                (line.strip() for line in (raw_description or "").splitlines() if line.strip().startswith("Mục tiêu")),
+                "",
+            )
+            if first_line:
+                _, _, first_line_text = first_line.partition(":")
+                if first_line_text.strip():
+                    return _finalize_answer(first_line_text.strip(), target_object)
         target_distance = _extract_target_distance(distance_description, target_object)
         if target_distance.startswith("Không có"):
             return f"Chưa xác định được vị trí của {target_object}."
@@ -762,6 +816,9 @@ def answer_from_api(
         system_prompt = RESPONSE_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT
 
     if target_object:
+        touch_answer = _direct_touch_answer(object_brief, target_object)
+        if touch_answer:
+            return touch_answer
         target_distance_text = _extract_target_distance(distance_description or "", target_object)
         if _looks_like_target_context(raw_description):
             target_context_text = raw_description

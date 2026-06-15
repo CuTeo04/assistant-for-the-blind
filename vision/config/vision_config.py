@@ -7,6 +7,9 @@ _cfg = get_config()["vision"]
 
 REAL_HAND_LENGTH_CM = _cfg["real_hand_length_cm"]
 KNOWN_DISTANCE_CM = _cfg["known_distance_cm"]
+HAND_REFERENCE_MAX_DEPTH_M = float(_cfg.get("hand_reference_max_depth_m", 0.60))
+HAND_TOUCH_DEPTH_TOLERANCE_M = float(_cfg.get("hand_touch_depth_tolerance_m", 0.08))
+HAND_TOUCH_OVERLAP_RATIO = float(_cfg.get("hand_touch_overlap_ratio", 0.10))
 FIXED_FOCAL_LENGTH_PX = float(_cfg.get("fixed_focal_length_px", 800.0))
 DEFAULT_DEPTH_SCALE = float(_cfg.get("default_depth_scale", 1.0))
 MAX_SIZE = _cfg["max_size"]

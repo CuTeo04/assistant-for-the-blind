@@ -41,6 +41,9 @@
   "vision": {
     "real_hand_length_cm": 7.0,
     "known_distance_cm": 43.0,
+    "hand_reference_max_depth_m": 0.6,
+    "hand_touch_depth_tolerance_m": 0.08,
+    "hand_touch_overlap_ratio": 0.1,
     "fixed_focal_length_px": 730.0,
     "default_depth_scale": 1.0,
     "max_size": 1280,
@@ -156,6 +159,9 @@
     "open_vocab_combined_batch_enabled": true,
     "open_vocab_combined_max_batch": 3,
     "open_vocab_extra_classes": [
+      "desk",
+      "table",
+      "dining table",
       "stairs",
       "staircase",
       "handrail",

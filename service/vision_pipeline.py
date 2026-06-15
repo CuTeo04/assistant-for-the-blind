@@ -13,6 +13,7 @@ from vision.detection.factory import create_detector_service
 from vision.detection.pipeline import boxes_to_detection_records, merge_detection_records
 from vision.depth_estimator import calibrate_depth, infer_depth, load_da2_model
 from vision.hand_calibrator import (
+    compute_hand_bbox,
     compute_focal_length,
     detect_hand_landmarks_full_image,
     init_mediapipe_hands,
@@ -239,15 +240,150 @@ def build_object_brief(objects: list[dict]) -> list[dict]:
                 "clock_label": str(obj.get("clock_label") or "").strip(),
                 "clock_hour": int(obj.get("clock")) if obj.get("clock") is not None else None,
                 "confidence": float(obj.get("conf", 0.0)),
-                "center_x": int(obj.get("center_x", 0)),
-                "center_y": int(obj.get("center_y", 0)),
+                "center_x": int(obj.get("cx", 0)),
+                "center_y": int(obj.get("cy", 0)),
                 "x1": int(obj.get("x1", 0)),
                 "y1": int(obj.get("y1", 0)),
                 "x2": int(obj.get("x2", 0)),
                 "y2": int(obj.get("y2", 0)),
+                "hand_reference_valid": bool(obj.get("hand_reference_valid", False)),
+                "hand_touching": bool(obj.get("hand_touching", False)),
+                "hand_relation_label": str(obj.get("hand_relation_label") or "").strip(),
+                "hand_relation_distance_cm": float(obj.get("hand_relation_distance_cm", 0.0)),
+                "hand_depth_gap_m": float(obj.get("hand_depth_gap_m", 0.0)),
             }
         )
     return items
+
+
+def _clip_box(box: tuple[int, int, int, int], width: int, height: int) -> tuple[int, int, int, int]:
+    x1, y1, x2, y2 = box
+    return (
+        int(np.clip(x1, 0, max(width - 1, 0))),
+        int(np.clip(y1, 0, max(height - 1, 0))),
+        int(np.clip(x2, 0, max(width - 1, 0))),
+        int(np.clip(y2, 0, max(height - 1, 0))),
+    )
+
+
+def _intersection_area(box_a: tuple[int, int, int, int], box_b: tuple[int, int, int, int]) -> int:
+    inter_x1 = max(box_a[0], box_b[0])
+    inter_y1 = max(box_a[1], box_b[1])
+    inter_x2 = min(box_a[2], box_b[2])
+    inter_y2 = min(box_a[3], box_b[3])
+    inter_w = max(0, inter_x2 - inter_x1)
+    inter_h = max(0, inter_y2 - inter_y1)
+    return int(inter_w * inter_h)
+
+
+def _box_area(box: tuple[int, int, int, int]) -> int:
+    return int(max(0, box[2] - box[0]) * max(0, box[3] - box[1]))
+
+
+def _overlap_ratio(box_a: tuple[int, int, int, int], box_b: tuple[int, int, int, int]) -> float:
+    inter_area = _intersection_area(box_a, box_b)
+    if inter_area <= 0:
+        return 0.0
+    min_area = min(_box_area(box_a), _box_area(box_b))
+    if min_area <= 0:
+        return 0.0
+    return float(inter_area) / float(min_area)
+
+
+def _build_hand_reference_info(
+    hand_bbox: tuple[int, int, int, int] | None,
+    hand_center: tuple[int, int] | None,
+    depth_final,
+    image_width: int,
+    image_height: int,
+) -> dict | None:
+    if hand_bbox is None or hand_center is None or depth_final is None:
+        return None
+
+    clipped_box = _clip_box(hand_bbox, image_width, image_height)
+    x1, y1, x2, y2 = clipped_box
+    if x2 <= x1 or y2 <= y1:
+        return None
+
+    hx = int(np.clip(hand_center[0], 0, image_width - 1))
+    hy = int(np.clip(hand_center[1], 0, image_height - 1))
+    hand_depth_m = float(depth_final[hy, hx])
+    if hand_depth_m <= 0 or hand_depth_m > float(vcfg.HAND_REFERENCE_MAX_DEPTH_M):
+        return None
+
+    return {
+        "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2},
+        "center": {"x": hx, "y": hy},
+        "depth_m": hand_depth_m,
+        "is_reference_valid": True,
+    }
+
+
+def _annotate_objects_with_hand_reference(objects: list[dict], hand_info: dict | None) -> list[dict]:
+    if not objects:
+        return []
+
+    if not hand_info or not hand_info.get("is_reference_valid"):
+        return [dict(obj) for obj in objects]
+
+    hand_box = (
+        int(hand_info["bbox"]["x1"]),
+        int(hand_info["bbox"]["y1"]),
+        int(hand_info["bbox"]["x2"]),
+        int(hand_info["bbox"]["y2"]),
+    )
+    hand_center_x = int(hand_info["center"]["x"])
+    hand_center_y = int(hand_info["center"]["y"])
+    hand_depth_m = float(hand_info["depth_m"])
+
+    annotated: list[dict] = []
+    for obj in objects:
+        enriched = dict(obj)
+        object_box = (
+            int(obj.get("x1", 0)),
+            int(obj.get("y1", 0)),
+            int(obj.get("x2", 0)),
+            int(obj.get("y2", 0)),
+        )
+        overlap_ratio = _overlap_ratio(hand_box, object_box)
+        depth_m = float(obj.get("Z", 0.0))
+        depth_gap_m = abs(depth_m - hand_depth_m)
+        touched = (
+            overlap_ratio >= float(vcfg.HAND_TOUCH_OVERLAP_RATIO)
+            and depth_gap_m <= float(vcfg.HAND_TOUCH_DEPTH_TOLERANCE_M)
+        )
+
+        dx_px = int(obj.get("cx", 0)) - hand_center_x
+        dy_px = int(obj.get("cy", 0)) - hand_center_y
+        dx_abs = abs(dx_px)
+        dy_abs = abs(dy_px)
+        depth_gap_cm = depth_gap_m * 100.0
+
+        relation = ""
+        relation_distance_cm = 0.0
+        if touched:
+            relation = "chạm"
+        elif dx_abs >= dy_abs and dx_abs > 0:
+            relation = "bên phải" if dx_px > 0 else "bên trái"
+            relation_distance_cm = abs(float(obj.get("X", 0.0)) - float(hand_info.get("x_m", 0.0))) * 100.0
+        elif dy_abs > 0:
+            relation = "bên dưới" if dy_px > 0 else "bên trên"
+            relation_distance_cm = abs(float(obj.get("Y", 0.0)) - float(hand_info.get("y_m", 0.0))) * 100.0
+        elif depth_m > hand_depth_m:
+            relation = "phía sau"
+            relation_distance_cm = depth_gap_cm
+        else:
+            relation = "phía trước"
+            relation_distance_cm = depth_gap_cm
+
+        enriched["hand_reference_valid"] = True
+        enriched["hand_touching"] = touched
+        enriched["hand_relation_label"] = relation
+        enriched["hand_relation_distance_cm"] = float(max(0.0, relation_distance_cm))
+        enriched["hand_depth_gap_m"] = depth_gap_m
+        annotated.append(enriched)
+
+    return annotated
 
 
 def init_models():
@@ -283,6 +419,8 @@ def _run_depth_calibration_lane(
         "depth_calib_ms": 0.0,
         "calibration_info": None,
         "calibration_description": "Không phát hiện được bàn tay để thiết lập camera.",
+        "hand_center": None,
+        "hand_bbox": None,
         "lane_ms": 0.0,
     }
 
@@ -310,6 +448,7 @@ def _run_depth_calibration_lane(
         return result
 
     known_distance_cm = _known_hand_distance_cm(hand_distance_cm)
+    result["hand_bbox"] = compute_hand_bbox(hand_landmarks, hand_crop_img, hand_origin)
     focal_length, hand_center, pixel_hand = compute_focal_length(
         hand_landmarks,
         hand_crop_img,
@@ -322,6 +461,7 @@ def _run_depth_calibration_lane(
         result["calibration_description"] = "Không đo được tiêu cự từ bàn tay."
         result["lane_ms"] = (time.perf_counter() - lane_start) * 1000.0
         return result
+    result["hand_center"] = hand_center
 
     h, w = img.shape[:2]
     depth_final = cv2.resize(depth_raw, (w, h))
@@ -444,9 +584,12 @@ def analyze_image_with_calibration(
             "object_brief": [],
             "calibration_description": "Không đọc được ảnh.",
             "calibration_info": None,
+            "hand_info": None,
             "timings": timings,
         }
 
+    orig_h, orig_w = orig.shape[:2]
+    logger.info("Task2 image origin | image=%s | shape=%sx%s", image_path, orig_h, orig_w)
     img = resize_keep_ratio(orig, vcfg.MAX_SIZE)
     h, w = img.shape[:2]
     timings["load_resize_ms"] = (time.perf_counter() - step_start) * 1000.0
@@ -560,6 +703,16 @@ def analyze_image_with_calibration(
     if resolved_scale != 1.0:
         depth_final = depth_final * resolved_scale
     timings["depth_calib_fallback_ms"] = (time.perf_counter() - depth_resize_start) * 1000.0
+    hand_info = _build_hand_reference_info(
+        depth_result.get("hand_bbox"),
+        depth_result.get("hand_center"),
+        depth_final,
+        w,
+        h,
+    )
+    if hand_info is not None:
+        hand_info["x_m"] = float((hand_info["center"]["x"] - (w / 2.0)) * hand_info["depth_m"] / resolved_focal)
+        hand_info["y_m"] = float((h - hand_info["center"]["y"]) * hand_info["depth_m"] / resolved_focal)
 
     step_start = time.perf_counter()
     object_data = []
@@ -620,6 +773,7 @@ def analyze_image_with_calibration(
         object_limit=vcfg.DESCRIPTION_MAX_OBJECTS,
     )
     timings["filter_ms"] = (time.perf_counter() - step_start) * 1000.0
+    response_objects = _annotate_objects_with_hand_reference(response_objects, hand_info)
     object_brief = build_object_brief(response_objects)
     if is_enabled("vision_object_debug", False):
         logger.info("Task2 valid_objects: %s", _format_valid_objects_for_log(valid_objects))
@@ -634,6 +788,7 @@ def analyze_image_with_calibration(
             "object_brief": object_brief,
             "calibration_description": depth_result["calibration_description"],
             "calibration_info": depth_result["calibration_info"],
+            "hand_info": hand_info,
             "timings": timings,
         }
 
@@ -658,6 +813,7 @@ def analyze_image_with_calibration(
             "object_brief": object_brief,
             "calibration_description": depth_result["calibration_description"],
             "calibration_info": depth_result["calibration_info"],
+            "hand_info": hand_info,
             "timings": timings,
         }
 
@@ -676,6 +832,7 @@ def analyze_image_with_calibration(
         "object_brief": object_brief,
         "calibration_description": depth_result["calibration_description"],
         "calibration_info": depth_result["calibration_info"],
+        "hand_info": hand_info,
         "timings": timings,
     }
 

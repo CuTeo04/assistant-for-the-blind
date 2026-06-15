@@ -8,6 +8,7 @@ YOLO_LABEL_VI = {
     "bottle": "chai",
     "bowl": "cái chén",
     "bucket": "xô",
+    "backpack": "ba lô",
     "cabinet": "tủ",
     "cardboard box": "thùng carton",
     "ceiling fan": "quạt trần",

@@ -14,10 +14,15 @@ logger = logging.getLogger("voice_server.vision")
 SEMANTIC_MERGE_LABEL_GROUPS = (
     frozenset({"electric kettle", "kettle", "cooking pot"}),
     frozenset({"cabinet", "shelf"}),
+    frozenset({"backpack", "shopping bag"}),
+    frozenset({"desk", "table", "dining table"}),
 )
 SEMANTIC_MERGE_LABEL_PRIORITY = {
     "cabinet": 1,
     "shelf": 0,
+    "desk": 2,
+    "table": 1,
+    "dining table": 0,
 }
 SEMANTIC_MERGE_IOU_THRESHOLD = 0.65
 SEMANTIC_MERGE_CONTAINMENT_THRESHOLD = 0.80

@@ -144,3 +144,36 @@ def compute_hand_reference(landmarks, crop_img, origin):
     pixel_hand = math.sqrt((x5 - x17) ** 2 + (y5 - y17) ** 2)
     hand_center = ((x5 + x17) // 2, (y5 + y17) // 2)
     return hand_center, pixel_hand
+
+
+def compute_hand_bbox(landmarks, crop_img, origin, padding_ratio: float = 0.10):
+    ch, cw = crop_img.shape[:2]
+    ox, oy = origin
+
+    points = []
+    for landmark in landmarks.landmark:
+        px = int(landmark.x * cw) + ox
+        py = int(landmark.y * ch) + oy
+        points.append((px, py))
+
+    if not points:
+        return None
+
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    x1 = min(xs)
+    y1 = min(ys)
+    x2 = max(xs)
+    y2 = max(ys)
+
+    width = max(1, x2 - x1)
+    height = max(1, y2 - y1)
+    pad_x = int(round(width * float(padding_ratio)))
+    pad_y = int(round(height * float(padding_ratio)))
+
+    return (
+        max(0, x1 - pad_x),
+        max(0, y1 - pad_y),
+        x2 + pad_x,
+        y2 + pad_y,
+    )

@@ -1,0 +1,740 @@
+ĐẠI HỌC ĐÀ NẴNG
+TRƯỜNG ĐẠI HỌC BÁCH KHOA
+KHOA CÔNG NGHỆ THÔNG TIN
+BÁO CÁO ĐỒ ÁN TỐT NGHIỆP
+ĐỀ TÀI:
+XÂY DỰNG HỆ THỐNG HỖ TRỢ NGƯỜI KHIẾM THỊ
+TRONG SINH HOẠT HẰNG NGÀY
+Giảng viên hướng dẫn: TS. Huỳnh Hữu Hưng
+Sinh viên thực hiện: Lê Anh Ngữ
+Số thẻ sinh viên: 102220200
+Lớp sinh hoạt: 22T_DT4
+Đà Nẵng, 06/2026
+LỜI NÓI ĐẦU
+Hiện nay, suy giảm thị lực và mù lòa là những vấn đề ảnh hưởng lớn đến chất lượng cuộc sống của nhiều người trên thế giới. Đối với người khiếm thị, việc nhận biết môi trường xung quanh, xác định vị trí đồ vật hay di chuyển an toàn trong không gian sinh hoạt hằng ngày luôn là những thách thức đáng kể. Những thao tác quen thuộc như tìm kiếm một vật dụng, nhận diện vật cản hoặc tránh các khu vực có nguy cơ gây nguy hiểm thường đòi hỏi sự cẩn trọng cao và trong nhiều trường hợp cần có sự hỗ trợ từ người khác. Điều này cho thấy nhu cầu về các giải pháp hỗ trợ thông minh, thuận tiện và dễ sử dụng trong đời sống hằng ngày là rất cần thiết. Không chỉ giúp nâng cao khả năng tự lập, các công cụ hỗ trợ phù hợp còn góp phần cải thiện sự tự tin và chất lượng sống của người khiếm thị trong quá trình hòa nhập với cộng đồng.
+Cùng với sự phát triển của khoa học công nghệ, đặc biệt là trí tuệ nhân tạo, thị giác máy tính và xử lý giọng nói, nhiều giải pháp hỗ trợ con người đã được nghiên cứu và ứng dụng trong thực tế. Các công nghệ này cho phép máy tính có khả năng nhận diện hình ảnh, phân tích bối cảnh và giao tiếp với người dùng thông qua âm thanh hoặc giọng nói. Đây là cơ sở quan trọng để xây dựng các hệ thống hỗ trợ thông minh, góp phần giúp người khiếm thị thuận tiện hơn trong sinh hoạt. Bên cạnh đó, sự phát triển của các mô hình học sâu hiện đại cũng tạo điều kiện để nâng cao độ chính xác trong việc nhận diện vật thể, ước lượng khoảng cách và mô tả không gian xung quanh. Nhờ vậy, các hệ thống hỗ trợ ngày nay không chỉ dừng lại ở mức cảnh báo đơn giản mà còn có thể cung cấp thông tin chi tiết và hữu ích hơn cho người sử dụng.
+Từ thực tế đó, đề tài “Xây dựng hệ thống hỗ trợ người khiếm thị trong sinh hoạt hằng ngày” được thực hiện với mục tiêu nghiên cứu và phát triển một hệ thống có khả năng quan sát không gian xung quanh, mô tả thông tin cần thiết bằng âm thanh, hỗ trợ tìm kiếm đồ vật và cảnh báo một số tình huống có thể gây nguy hiểm. Thông qua đề tài này, em mong muốn góp phần tạo ra một giải pháp có ý nghĩa thực tiễn, giúp người khiếm thị nâng cao khả năng tự lập, giảm bớt sự phụ thuộc vào người khác và tiếp cận tốt hơn với các thành tựu công nghệ hiện đại. Đồng thời, đề tài cũng thể hiện khả năng ứng dụng các công nghệ trí tuệ nhân tạo vào những bài toán mang giá trị nhân văn rõ rệt. Đây cũng là cơ hội để nghiên cứu, đánh giá và hoàn thiện thêm các hướng tiếp cận công nghệ có thể phục vụ hiệu quả hơn cho cộng đồng người khiếm thị trong tương lai.
+LỜI CẢM ƠN
+Trong suốt quá trình thực hiện đồ án tốt nghiệp, em đã nhận được nhiều sự quan tâm, giúp đỡ và động viên từ quý thầy cô, gia đình và bạn bè. Những sự hỗ trợ đó là nguồn động lực quan trọng giúp em có thể hoàn thành đề tài một cách nghiêm túc và đầy đủ hơn.
+Đặc biệt, em xin gửi lời cảm ơn chân thành và sâu sắc đến thầy TS. Huỳnh Hữu Hưng, giảng viên hướng dẫn đồ án. Thầy đã tận tình định hướng, góp ý và hỗ trợ em trong quá trình nghiên cứu, triển khai hệ thống cũng như hoàn thiện nội dung báo cáo. Những chỉ dẫn của thầy không chỉ giúp em giải quyết các khó khăn trong quá trình thực hiện đề tài mà còn giúp em tích lũy thêm nhiều kiến thức và kinh nghiệm quý báu.
+LỜI CAM ĐOAN
+Em xin cam đoan rằng đồ án tốt nghiệp này là kết quả nghiên cứu và thực hiện của cá nhân em dưới sự hướng dẫn của thầy TS. Huỳnh Hữu Hưng. Toàn bộ nội dung, số liệu và kết quả được trình bày trong báo cáo là trung thực, được thực hiện trong quá trình nghiên cứu đề tài và không sao chép trái phép từ bất kỳ công trình nào khác.
+Các tài liệu tham khảo, thư viện mã nguồn mở, công cụ và nguồn thông tin được sử dụng trong đồ án đều được em tìm hiểu, chọn lọc và trích dẫn đầy đủ theo đúng quy định. Em xin chịu hoàn toàn trách nhiệm trước nhà trường về tính chính xác, trung thực và hợp lệ của nội dung được trình bày trong báo cáo này.
+Em xin chân thành cảm ơn!
+NHẬN XÉT CỦA NGƯỜI HƯỚNG DẪN
+…………………………………………………………..……………………………...……...………………………………………………………………………………………..……..….…………………..………………………………………………………………..………….…………………………………………………………………………..….………………..………………………………………………………………………………..…………………………………………………..…………………………………………..…………………………………………………………………………………………………………..…………………………………………………………………………………..…………………………………………………………………..…………………………..…………………………………………………………………………………………………..………………………..………………………………………………………………………..……………………………………………………………………………..…………………………………………………………………………………………………………………..…………………………………..……………………………………………………………………………………………………………………………………………………..……..………………………………………………………………………………………………..………………………………………………..……………………………………………………………………………………………………………………………………………..………..……………………………………………………………………………………..………………………………………………………………..……………………………………………………………………………………………………………………
+Đà Nẵng, ngày.… tháng.… năm 2026
+GVHD
+TS. Huỳnh Hữu Hưng
+NHẬN XÉT CỦA NGƯỜI PHẢN BIỆN
+……….………………………………………………………………………………….…………….……………………………………………..…………………………………………………………………………………………………………………………………………………....………………………………………………………………………………………………..……………………………………………………..………………………………………………………………………………………………………………………………………..……………..………………………………………………………………………………..……………………………………………………………………..……………………………………………………………………………………………………………………………………………………..…………………………………..…………………………………………………………………………………………………………………..……………………………………………………………………………..………………………………………………………………………..…………………..…………………………………………………………………………………………………………………………………..……………………………………………………………..………………………………………………………………………………………..……..………………………………………………………………………………………………………………………………………………..……………………………………………..………………………………………………………………………………………………………..……………………………………………………………………………………..………………………………………………………………..………………………………..……………………………………………………………………………………………………
+Đà Nẵng, ngày.… tháng.… năm 2026
+MỤC LỤC
+CHƯƠNG 1. GIỚI THIỆU ĐỀ TÀI12
+1.1. Lý do chọn đề tài12
+1.2. Mục tiêu của đề tài12
+1.3. Phạm vi và giới hạn13
+1.4. Ý nghĩa khoa học và thực tiễn13
+1.5. Bố cục báo cáo13
+CHƯƠNG 2. CƠ SỞ LÝ THUYẾT VÀ CÔNG NGHỆ SỬ DỤNG13
+2.1. Thị giác máy tính13
+2.1.1. Object Detection13
+2.1.2. Monocular Depth Estimation15
+2.2. Xử lý giọng nói và ngôn ngữ tự nhiên18
+2.3. Lý thuyết máy ảnh lỗ kim và tiêu cự pixel19
+2.4. Phương pháp xác định khoảng cách và quan hệ không gian giữa các vật thể20
+2.5. Xác định hướng vật thể theo mô hình đồng hồ24
+2.6. Kiến trúc phần mềm26
+2.7. Các thư viện hỗ trợ26
+2.8. Prompt System27
+CHƯƠNG 3. PHÂN TÍCH YÊU CẦU HỆ THỐNG28
+3.1. Yêu cầu chức năng28
+3.2. Yêu cầu phi chức năng28
+3.3. Các Use Case chính29
+CHƯƠNG 4. THIẾT KẾ HỆ THỐNG VÀ KIẾN TRÚC DỰ ÁN31
+4.1. Tổng quan hệ thống (Pipeline)31
+4.2. Task 1 - Pipeline xử lý tiếng nói và suy luận ý định lệnh trong hệ thống33
+4.2.1. Mục tiêu của Task 133
+4.2.2. Vị trí của Task 1 trong toàn bộ hệ thống33
+4.2.3. Đầu vào và đầu ra của Task 133
+4.2.4. Pipeline xử lý34
+4.3. Task 2 - Pipeline xử lý thị giác trong hệ thống36
+4.3.1. Mục tiêu của Task 236
+4.3.2. Kiến trúc tổng quát của pipeline37
+4.3.3. Tiền xử lý ảnh đầu vào37
+4.3.4. Luồng phát hiện vật thể chính37
+4.3.5. Luồng phát hiện open-vocabulary38
+4.3.6. Luồng ước lượng độ sâu và hiệu chuẩn bằng tay38
+4.3.7. Hợp nhất kết quả nhận dạng39
+4.3.8. Xây dựng object_data39
+4.3.9. Hiệu chỉnh nhãn theo kích thước thật39
+4.3.10. Lọc và chuyển đổi sang tọa độ không gian40
+4.3.11. Gói dữ liệu đầu ra của Task 240
+4.4. Task 3 - Pipeline sinh phản hồi ngôn ngữ trong hệ thống42
+4.4.1. Mục tiêu của Task 342
+4.4.2. Vị trí của Task 3 trong toàn hệ thống43
+4.4.3. Bước xây dựng mô tả thô theo intent43
+4.4.4. Bước sinh câu trả lời cuối bằng mô hình ngôn ngữ45
+4.4.5. Cơ chế fallback khi LLM không trả kết quả46
+4.4.6. Đầu ra của Task 346
+4.5. Chi tiết thiết kế các module47
+4.5.1. Nhóm module của Task 148
+4.5.2. Nhóm module của Task 248
+4.5.3. Nhóm module của Task 349
+4.5.4. Nhóm module điều phối hệ thống50
+4.5.5. Nhóm module prompt và cấu hình50
+4.5.6. Kết luận về cách tổ chức module51
+CHƯƠNG 5. CÀI ĐẶT, TRIỂN KHAI VÀ KIỂM THỬ51
+5.1. Môi trường phát triển51
+5.2. Hướng dẫn cài đặt52
+5.3. Kiểm thử và xác nhận hoạt động52
+5.4. Hướng phát triển thêm55
+5.5. Khó khăn khi sử dụng ứng dụng56
+MỤC LỤC BẢNG
+Bảng 1: Danh mục các từ viết tắt sử dụng trong báo cáo9
+BẢNG CÁC TỪ VIẾT TẮT
+Bảng 1: Danh mục các từ viết tắt sử dụng trong báo cáo
+Từ viết tắt
+Diễn giải
+Ý nghĩa trong báo cáo
+AI
+Artificial Intelligence
+Trí tuệ nhân tạo
+API
+Application Programming Interface
+Giao diện lập trình ứng dụng
+CPU
+Central Processing Unit
+Bộ xử lý trung tâm
+CV
+Computer Vision
+Thị giác máy tính
+JSON
+JavaScript Object Notation
+Định dạng dữ liệu trao đổi
+LLM
+Large Language Model
+Mô hình ngôn ngữ lớn
+NLP
+Natural Language Processing
+Xử lý ngôn ngữ tự nhiên
+ONNX
+Open Neural Network Exchange
+Chuẩn trao đổi mô hình học máy
+RGB
+Red - Green - Blue
+Không gian màu của ảnh đầu vào
+STT
+Speech-to-Text
+Chuyển giọng nói thành văn bản
+TTS
+Text-to-Speech
+Chuyển văn bản thành giọng nói
+YOLO
+You Only Look Once
+Mô hình phát hiện đối tượng thời gian thực
+MỤC LỤC CÔNG THỨC
+Công thức 1: Công thức tính khoảng cách từ camera đến vật thể19
+Công thức 2: Công thức tính kích thước thực của vật thể20
+Công thức 3: Lấy độ sâu tại tâm vật thể20
+Công thức 4: Quy đổi tọa độ ngang của vật thể21
+Công thức 5: Quy đổi tọa độ đứng của vật thể21
+Công thức 6: Quy đổi biên trái và biên phải của vật thể22
+Công thức 7: Khoảng cách ngang giữa hai vật thể khi không giao nhau22
+Công thức 8: Khoảng cách ngang khi hai vật thể giao nhau22
+Công thức 9: Chênh lệch độ sâu giữa hai vật thể23
+Công thức 10: Khoảng cách tổng hợp giữa hai vật thể23
+Công thức 11: Công thức xác định tâm của vật thể24
+Công thức 12: Công thức xác định tâm ảnh25
+Công thức 13: Công thức xác định độ lệch so với tâm ảnh25
+Công thức 14: Công thức xác định góc định hướng của vật thể25
+MỤC LỤC HÌNH ẢNH
+Hình 1: Kết quả phát hiện vật thể bằng mô hình YOLO15
+Hình 2: Bối cảnh trong nhà thực tế dùng để ước lượng độ sâu16
+Hình 3: Bản đồ độ sâu do Depth Anything V2 sinh ra từ ảnh đầu vào16
+Hình 4: Mô hình máy ảnh lỗ kim trong hệ thống thị giác máy tính19
+Hình 5: Sơ đồ tổng quan hệ thống của đề tài31
+CHƯƠNG 1. GIỚI THIỆU ĐỀ TÀI
+1.1. Lý do chọn đề tài
+Theo thống kê của WHO, trên thế giới có hàng trăm triệu người bị suy giảm thị lực hoặc mù hoàn toàn. Trong đời sống hằng ngày, người khiếm thị thường gặp nhiều khó khăn trong việc nhận biết môi trường xung quanh, tìm kiếm đồ vật, cũng như đảm bảo an toàn khi di chuyển hoặc sinh hoạt trong không gian gia đình. Phần lớn các hoạt động đơn giản như tìm một chiếc ly trên bàn, xác định vị trí đồ vật trong phòng, hay tránh các vật nguy hiểm như dao, bếp, bậc thang đều đòi hỏi sự hỗ trợ từ người khác.
+Trong những năm gần đây, sự phát triển mạnh mẽ của các lĩnh vực như Computer Vision, Artificial Intelligence và Speech Recognition đã mở ra khả năng xây dựng các hệ thống hỗ trợ thông minh cho người khuyết tật. Các mô hình nhận diện hình ảnh hiện đại có thể phát hiện và phân loại hàng trăm loại đồ vật trong thời gian thực; trong khi đó các hệ thống xử lý giọng nói cho phép người dùng tương tác với máy tính một cách tự nhiên thông qua lời nói. Tuy nhiên, phần lớn các hệ thống hiện nay chỉ tập trung vào một chức năng đơn lẻ, ví dụ như nhận diện vật thể hoặc đọc văn bản. Các giải pháp tích hợp nhiều chức năng phục vụ trực tiếp cho nhu cầu sinh hoạt của người khiếm thị vẫn còn hạn chế, đặc biệt là các hệ thống có khả năng mô tả bối cảnh không gian, hỗ trợ tìm đồ vật, hướng dẫn thao tác bằng tay.
+Xuất phát từ nhu cầu thực tiễn đó, đề tài “Xây dựng hệ thống hỗ trợ người khiếm thị trong sinh hoạt hằng ngày” được lựa chọn nhằm nghiên cứu và xây dựng một hệ thống thông minh có khả năng quan sát môi trường, mô tả bối cảnh bằng âm thanh, hỗ trợ người dùng tìm kiếm và tương tác với đồ vật. Hệ thống hướng tới việc giúp người khiếm thị tăng khả năng tự lập trong sinh hoạt, giảm phụ thuộc vào sự hỗ trợ từ người khác, đồng thời tận dụng các tiến bộ mới của trí tuệ nhân tạo trong lĩnh vực thị giác máy tính và xử lý ngôn ngữ tự nhiên.
+1.2. Mục tiêu của đề tài
+Xây dựng hệ thống có khả năng phân tích hình ảnh từ camera đơn, nhận diện vật thể, ước lượng khoảng cách giữa các vật thể.
+Hỗ trợ tương tác bằng giọng nói (Voice Command) để người dùng dễ dàng điều khiển hệ thống.
+Tạo ra mô tả không gian bằng tiếng Việt tự nhiên, tối ưu cho chuyển đổi văn bản sang giọng nói (TTS).
+Triển khai theo mô hình Client-Server, đảm bảo hiệu suất và khả năng mở rộng.
+1.3. Phạm vi và giới hạn
+Sử dụng camera (monocular camera) đơn và microphone trên điện thoại hoặc webcam.
+Tập trung vào môi trường trong nhà và môi trường quen thuộc.
+Ngôn ngữ mô tả không gian: Tiếng Việt.
+1.4. Ý nghĩa khoa học và thực tiễn
+Đề tài góp phần áp dụng các mô hình AI hiện đại (YOLO, Depth Anything V2,...) vào phục vụ cộng đồng. Kết quả có thể phát triển thành ứng dụng di động hỗ trợ người khiếm thị trong sinh hoạt hằng ngày.
+1.5. Bố cục báo cáo
+Báo cáo gồm 5 chương chính:
+Chương 1: Giới thiệu đề tài.
+Chương 2: Cơ sở lý thuyết và công nghệ.
+Chương 3: Phân tích yêu cầu hệ thống.
+Chương 4: Thiết kế hệ thống và kiến trúc dự án.
+Chương 5: Cài đặt, triển khai và kiểm thử.
+CHƯƠNG 2. CƠ SỞ LÝ THUYẾT VÀ CÔNG NGHỆ SỬ DỤNG
+2.1. Thị giác máy tính
+2.1.1. Object Detection
+Phát hiện đối tượng là bài toán cơ bản trong thị giác máy tính, với mục tiêu xác định vị trí và nhận diện nhãn của các vật thể xuất hiện trong ảnh. Kết quả của bài toán này thường được biểu diễn dưới dạng các hộp giới hạn (bounding box) kèm theo nhãn lớp và độ tin cậy của từng đối tượng. Trong các hướng tiếp cận hiện đại, họ mô hình YOLO (You Only Look Once) là một nền tảng quan trọng nhờ khả năng thực hiện phát hiện đối tượng theo cơ chế một giai đoạn (one-stage detection), tức là mô hình có thể đồng thời dự đoán vị trí và phân loại đối tượng chỉ trong một lần suy luận trên ảnh đầu vào.
+Ưu điểm nổi bật của YOLO là tốc độ xử lý cao, kiến trúc gọn và phù hợp với các bài toán yêu cầu phản hồi nhanh. Thay vì tách riêng các bước đề xuất vùng quan tâm và phân loại như một số phương pháp hai giai đoạn, YOLO học trực tiếp ánh xạ từ ảnh đầu vào sang các dự đoán bounding box và nhãn lớp. Nhờ đó, mô hình có thể đạt được sự cân bằng tốt giữa hiệu năng và chi phí tính toán, nên được sử dụng rộng rãi trong các ứng dụng thời gian thực.
+Tuy nhiên, trong thực tế, một hệ thống phát hiện đối tượng hiện đại thường không chỉ dựa vào một detector duy nhất với tập nhãn cố định. Bên cạnh các detector đóng tập lớp như YOLO, nhiều hệ thống còn bổ sung open-vocabulary detection. Đây là hướng tiếp cận cho phép mở rộng khả năng nhận diện ra ngoài tập lớp đã huấn luyện sẵn, thông qua việc sử dụng các nhãn gợi ý hoặc biểu diễn ngữ nghĩa mở. Về mặt lý thuyết, open-vocabulary detection giúp hệ thống tăng độ bao phủ lớp nhãn, đặc biệt hữu ích với các đối tượng có nhiều cách gọi gần nghĩa như desk, table, dining table, hoặc các vật dễ bị bỏ sót nếu chỉ dùng một bộ lớp cố định.
+Ngoài ra, một kỹ thuật thường được dùng để cải thiện chất lượng phát hiện là tiled detection. Thay vì chỉ suy luận trên toàn bộ ảnh, ảnh đầu vào có thể được chia thành nhiều vùng nhỏ để mô hình xử lý cục bộ, sau đó tổng hợp kết quả lại. Cách tiếp cận này giúp tăng khả năng phát hiện các vật thể nhỏ, vật ở xa, hoặc vật nằm trong những vùng khó quan sát, nơi thông tin chi tiết có thể bị suy giảm nếu chỉ xử lý ảnh ở quy mô toàn cục.
+Sau bước suy luận, kết quả phát hiện còn cần trải qua các bước hậu xử lý để loại bỏ nhiễu và giảm trùng lặp. Một kỹ thuật phổ biến là Non-Maximum Suppression (NMS), dùng để loại bỏ các bounding box chồng lấn mạnh và chỉ giữ lại dự đoán tốt nhất. Trong các hệ nhiều nhánh detector, hậu xử lý còn có thể bao gồm việc hợp nhất kết quả trong từng nhánh, hợp nhất giữa các nhánh phát hiện khác nhau, và hiệu chỉnh lại nhãn dựa trên ngữ cảnh hoặc kích thước ước lượng của vật thể. Những bước này giúp đầu ra cuối cùng ổn định hơn, phản ánh đúng hơn số lượng và bản chất của các đối tượng trong ảnh.
+Tóm lại, về mặt cơ sở lý thuyết, phát hiện đối tượng không chỉ dừng ở việc áp dụng một mô hình YOLO đơn lẻ, mà còn có thể được mở rộng bằng các hướng như open-vocabulary detection, tiled detection và các cơ chế hậu xử lý sau phát hiện. Đây là những thành phần quan trọng giúp nâng cao độ chính xác, độ bao phủ ngữ nghĩa và tính ổn định của hệ thống trong các bối cảnh thực tế.
+Hình 1: Kết quả phát hiện vật thể bằng mô hình YOLO
+YOLO là một giải pháp mạnh mẽ cho bài toán phát hiện đối tượng nhờ kiến trúc đơn giản, tốc độ cao và hiệu năng ổn định. Việc sử dụng YOLO trong đồ án giúp hệ thống có khả năng nhận diện đối tượng nhanh chóng, chính xác và đáp ứng tốt yêu cầu của các ứng dụng thực tế.
+2.1.2. Monocular Depth Estimation
+Monocular Depth Estimation là bài toán ước lượng độ sâu từ một ảnh RGB đơn lẻ. Mục tiêu của phương pháp này là dự đoán khoảng cách từ camera đến các vùng hoặc vật thể trong ảnh mà không cần sử dụng camera stereo, cảm biến LiDAR hay cảm biến chiều sâu chuyên dụng. Đây là một kỹ thuật quan trọng trong thị giác máy tính, thường được ứng dụng trong robot tự hành, xe tự lái, thực tế tăng cường, tái tạo không gian 3D và phân tích cảnh.
+Hệ thống sử dụng Depth Anything V2 Indoor, một mô hình ước lượng độ sâu hiện đại dựa trên kiến trúc transformer. Mô hình có khả năng trích xuất đặc trưng hình ảnh ở nhiều mức khác nhau, từ đó tạo ra bản đồ độ sâu chi tiết, ổn định và phù hợp với môi trường trong nhà. Phiên bản indoor metric của Depth Anything V2 có thể dự đoán giá trị độ sâu theo đơn vị mét trong phạm vi cảnh phù hợp, giúp hệ thống ước lượng khoảng cách từ camera đến vật thể thay vì chỉ xác định quan hệ gần – xa tương đối.
+Hình 2: Bối cảnh trong nhà thực tế dùng để ước lượng độ sâu
+Hình 3: Bản đồ độ sâu do Depth Anything V2 sinh ra từ ảnh đầu vào
+Màu sắc thể hiện khoảng cách: Thông thường, các tông màu nóng hoặc sáng (như vàng, cam, trắng) biểu thị những vật thể nằm gần với camera chụp. Ngược lại, các tông màu lạnh hoặc tối (như xanh đậm, tím, đen) biểu thị những vật thể nằm xa camera hơn.
+Ví dụ trực quan về "Mặt mộc" của dữ liệu: Dưới đây là ma trận các con số (tính bằng mét) được trích xuất đều đặn trên toàn bộ khung hình đó:
+Hàng 1: Trần nhà, đèn chùm hai bên, cửa vòm ở giữa (Màu xanh/tím)
+[ 15.5, 15.8, 16.0, 18.5, 18.5, 16.0, 15.8, 15.5 ]
+Hàng 2: Các cột trụ, bức tường hậu cảnh
+[ 14.0, 14.2, 14.5, 18.0, 18.0, 14.5, 14.2, 14.0 ]
+Hàng 3: Hành lang nhỏ và lan can ở tầng trên (Màu xanh lơ)
+[ 8.5, 8.2, 8.0, 8.5, 8.5, 8.0, 8.2, 8.5 ]
+Hàng 4: Các bậc cầu thang vắt chéo ở giữa ảnh (Màu xanh nhạt/vàng)
+[ 5.5, 5.2, 5.0, 4.8, 5.0, 5.5, 6.0, 6.5 ]
+Hàng 5: Lan can chéo bên trái (Đỏ) và nền cầu thang bên phải (Vàng)
+[ 1.8, 2.5, 3.5, 3.8, 4.0, 4.2, 4.5, 5.0 ],
+Hàng 6: Cận cảnh hoa văn lan can sát góc dưới cùng bên trái (Đỏ sậm)
+[ 1.1, 1.2, 1.5, 2.0, 2.5, 3.0, 3.2, 3.5 ]
+Tuy nhiên, do chỉ sử dụng một ảnh RGB đầu vào, kết quả độ sâu của Depth Anything V2 Indoor không nên được xem là phép đo chính xác tuyệt đối như LiDAR, camera stereo hoặc cảm biến ToF. Độ chính xác có thể bị ảnh hưởng bởi điều kiện ánh sáng, góc nhìn camera, tiêu cự, vật thể phản chiếu, bề mặt trong suốt hoặc sự khác biệt giữa môi trường thực tế và dữ liệu huấn luyện. Vì vậy, giá trị khoảng cách theo mét nên được hiểu là kết quả ước lượng và cần kiểm tra thực nghiệm nếu hệ thống yêu cầu đo đạc chính xác cao.
+Việc kết hợp Depth Anything V2 Indoor với mô hình phát hiện đối tượng như YOLO giúp hệ thống không chỉ nhận diện được đối tượng trong ảnh mà còn ước lượng được khoảng cách từ camera đến đối tượng đó. Nhờ đó, hệ thống có thêm khả năng nhận thức không gian, hỗ trợ tốt hơn cho các ứng dụng trong môi trường trong nhà như cảnh báo va chạm hoặc phân tích vị trí vật thể.
+2.2. Xử lý giọng nói và ngôn ngữ tự nhiên
+Hệ thống tích hợp các thành phần xử lý ngôn ngữ và giọng nói nhằm hỗ trợ tương tác tự nhiên giữa người dùng và hệ thống. Quy trình xử lý bao gồm ba bước chính:
+Chuyển giọng nói thành văn bản: đầu tiên, thành phần Speech-to-Text được triển khai thông qua Groq API. Thành phần này có nhiệm vụ chuyển đổi âm thanh đầu vào từ người dùng thành văn bản, làm cơ sở cho các bước xử lý tiếp theo. Việc sử dụng API giúp hệ thống giảm tải xử lý cục bộ, đồng thời tận dụng khả năng nhận dạng giọng nói nhanh và ổn định. Kết quả văn bản sau khi nhận dạng được đưa vào mô hình ngôn ngữ để phân tích ý định người dùng.
+Phân tích nội dung lệnh bằng LLM: hệ thống sử dụng LLM thông qua Groq và DeepSeek API để xử lý và hiểu nội dung văn bản. Mô hình có nhiệm vụ phân loại lệnh, xác định yêu cầu chính của người dùng, đồng thời làm mượt và chuẩn hóa câu mô tả trước khi phản hồi. Để tăng độ chính xác, hệ thống kết hợp LLM với các prompt được thiết kế sẵn. Các prompt này quy định rõ vai trò của mô hình, phạm vi tác vụ, định dạng đầu ra và các loại lệnh cần nhận diện. Nhờ đó, mô hình có thể tập trung vào đúng ngữ cảnh của bài toán, giảm khả năng trả lời lan man hoặc hiểu sai ý định người dùng.
+Bên cạnh đó, prompt còn được sử dụng để giới hạn context của mô hình. Thay vì đưa toàn bộ thông tin không cần thiết vào LLM, hệ thống chỉ cung cấp những dữ liệu liên quan trực tiếp đến yêu cầu hiện tại, chẳng hạn như kết quả phát hiện đối tượng, khoảng cách ước lượng hoặc câu lệnh người dùng. Cách làm này giúp giảm nhiễu thông tin, tối ưu chi phí xử lý, tăng tốc độ phản hồi và cải thiện tính ổn định của kết quả đầu ra.
+Chuyển văn bản phản hồi thành giọng nói: thành phần TTS được tích hợp bằng Edge-TTS hoặc Google TTS để chuyển đổi văn bản phản hồi thành giọng nói. Thành phần này giúp hệ thống đọc kết quả mô tả cho người dùng thay vì chỉ hiển thị dưới dạng văn bản. Điều này đặc biệt hữu ích trong các ứng dụng hỗ trợ người dùng theo thời gian thực, hệ thống trợ lý thông minh hoặc các bài toán cần tương tác rảnh tay.
+Nhìn chung, việc kết hợp Groq và DeepSeek API cho Speech-to-Text, xử lý ngôn ngữ và Edge-TTS/Google TTS cho Text-to-Speech giúp hệ thống có khả năng giao tiếp hai chiều bằng giọng nói. Nhờ đó, người dùng có thể đưa ra yêu cầu bằng lời nói, hệ thống hiểu và xử lý lệnh, sau đó phản hồi lại bằng giọng nói một cách tự nhiên và thuận tiện.
+2.3. Lý thuyết máy ảnh lỗ kim và tiêu cự pixel
+Trong hệ thống thị giác máy tính, mô hình máy ảnh lỗ kim thường được sử dụng để mô tả quá trình hình thành ảnh từ không gian 3D lên mặt phẳng ảnh 2D. Theo mô hình này, ánh sáng từ một điểm trong không gian đi qua tâm camera và được chiếu lên mặt phẳng ảnh, tạo thành tọa độ điểm ảnh tương ứng. Mô hình này giúp biểu diễn mối quan hệ hình học giữa kích thước vật thể trong thực tế, khoảng cách từ camera đến vật thể và kích thước của vật thể trên ảnh.
+Hình 4: Mô hình máy ảnh lỗ kim trong hệ thống thị giác máy tính
+Một tham số quan trọng trong mô hình máy ảnh lỗ kim là tiêu cự. Trong xử lý ảnh số, tiêu cự thường được biểu diễn theo đơn vị pixel, gọi là focal length in pixels. Tham số này cho biết mức độ phóng đại của camera trên ảnh và thường được ký hiệu là (f_x), (f_y), tương ứng với trục ngang và trục dọc của ảnh.
+Dựa trên mô hình máy ảnh lỗ kim, mối quan hệ giữa kích thước thực của vật thể, kích thước vật thể trên ảnh và khoảng cách đến camera có thể được biểu diễn như sau:
+Công thức 1: Công thức tính khoảng cách từ camera đến vật thể
+Trong đó:
+Z: Khoảng cách từ camera đến vật thể.
+f: Tiêu cự theo đơn vị pixel.
+W: Kích thước thực của vật thể.
+w: Kích thước của vật thể trên ảnh tính theo pixel.
+Công thức này cho thấy khi biết tiêu cự camera và kích thước thực của một vật chuẩn, hệ thống có thể ước lượng khoảng cách từ camera đến vật thể.
+Ngược lại, nếu đã biết khoảng cách (Z) từ bản đồ độ sâu và kích thước vật thể trên ảnh, hệ thống có thể ước lượng kích thước thực của vật thể theo công thức:
+Công thức 2: Công thức tính kích thước thực của vật thể
+Trong đó:
+W: Kích thước thực của vật thể.
+w: Kích thước của vật thể trên ảnh theo đơn vị pixel.
+Z: Khoảng cách từ camera đến vật thể.
+f: Tiêu cự theo đơn vị pixel.
+2.4. Phương pháp xác định khoảng cách và quan hệ không gian giữa các vật thể
+Trong dự án này, việc xác định khoảng cách và quan hệ không gian giữa các vật thể được thực hiện trong giai đoạn xử lý thị giác máy tính, sau khi hệ thống đã phát hiện được các đối tượng trong ảnh và tạo ra bản đồ độ sâu. Mỗi vật thể sau khi được phát hiện sẽ được biểu diễn bởi một hộp bao (bounding box) có dạng (x1, y1, x2, y2). Từ hộp bao này, hệ thống xác định tâm của vật thể theo công thức:
+cx = (x1 + x2) / 2, cy = (y1 + y2) / 2
+Tâm (cx, cy) được xem là vị trí đại diện của vật thể trên ảnh. Tại vị trí này, hệ thống truy xuất giá trị độ sâu từ bản đồ độ sâu đã được chuẩn hóa ở bước trước để xác định khoảng cách từ camera đến vật thể. Nếu ký hiệu bản đồ độ sâu là D(u, v), thì khoảng cách từ người dùng đến vật thể được tính bởi:
+Công thức 3: Lấy độ sâu tại tâm vật thể
+Z = D(cx, cy)
+Trong đó:
+Z: khoảng cách theo phương sâu từ camera đến vật thể, đơn vị mét.
+D(cx, cy): giá trị độ sâu lấy tại vị trí tâm của vật thể trên bản đồ độ sâu.
+cx, cy: tọa độ tâm của vật thể trên ảnh.
+Trong đó, Z là khoảng cách theo phương sâu, đơn vị mét. Đây là đại lượng được sử dụng trực tiếp trong hệ thống để mô tả vật thể đang ở gần hay xa người dùng. Trong phần cài đặt hiện tại, giá trị Z cũng chính là khoảng cách được đưa vào chuỗi mô tả khoảng cách đầu ra, ví dụ như chair 1: 1.20m.
+Sau khi có độ sâu Z, hệ thống tiếp tục chuyển vị trí của vật thể từ không gian ảnh hai chiều sang hệ tọa độ tương đối gần đúng trong không gian quan sát. Với W là chiều rộng ảnh, H là chiều cao ảnh, và f là tiêu cự tương đương của camera, các tọa độ tương đối của vật thể được tính như sau:
+Công thức 4: Quy đổi tọa độ ngang của vật thể
+X = ((cx - W / 2) * Z) / f
+Trong đó:
+X: tọa độ tương đối của vật thể theo phương ngang trong không gian quan sát.
+cx: hoành độ tâm của vật thể trên ảnh.
+W: chiều rộng ảnh đầu vào.
+Z: khoảng cách từ camera đến vật thể.
+f: tiêu cự tương đương của camera.
+Công thức 5: Quy đổi tọa độ đứng của vật thể
+Y = ((H - cy) * Z) / f
+Trong đó:
+Y: tọa độ tương đối của vật thể theo phương thẳng đứng trong không gian quan sát.
+H: chiều cao ảnh đầu vào.
+cy: tung độ tâm của vật thể trên ảnh.
+Z: khoảng cách từ camera đến vật thể.
+f: tiêu cự tương đương của camera.
+Trong đó, X biểu diễn độ lệch của vật thể sang bên trái hoặc bên phải so với tâm nhìn của người dùng, còn Y biểu diễn vị trí theo phương thẳng đứng. Việc đưa vật thể về bộ tọa độ (X, Y, Z) cho phép hệ thống không chỉ biết vật thể nằm ở đâu trên ảnh, mà còn suy ra được vị trí tương đối của nó trong không gian.
+Để phản ánh chính xác hơn phần không gian mà vật thể chiếm giữ theo chiều ngang, hệ thống không chỉ dùng tâm vật thể mà còn tính thêm biên trái và biên phải của vật thể trong không gian tương đối:
+Công thức 6: Quy đổi biên trái và biên phải của vật thể
+Xleft = ((x1 - W / 2) * Z) / f, Xright = ((x2 - W / 2) * Z) / f
+Trong đó:
+Xleft: tọa độ biên trái của vật thể trong không gian tương đối.
+Xright: tọa độ biên phải của vật thể trong không gian tương đối.
+x1, x2: hoành độ hai biên của bounding box trên ảnh.
+W: chiều rộng ảnh đầu vào.
+Z: khoảng cách từ camera đến vật thể.
+f: tiêu cự tương đương của camera.
+Hai giá trị này giúp hệ thống ước lượng bề rộng chiếm chỗ của vật thể trong không gian quan sát. Đây là điểm quan trọng, vì trong cài đặt hiện tại dự án không tính khoảng cách ngang giữa hai vật thể chỉ bằng hiệu tọa độ tâm, mà dùng khoảng cách giữa hai miền chiếm chỗ thực tế của chúng.
+Xét hai vật thể A và B. Nếu khoảng ngang của hai vật thể không chồng lấn lên nhau, hệ thống xác định độ lệch ngang dX như sau:
+Công thức 7: Khoảng cách ngang giữa hai vật thể khi không giao nhau
+dX = Xleft(B) - Xright(A) nếu A nằm bên trái B
+Trong đó:
+dX: khoảng cách ngang giữa hai vật thể trong không gian quan sát.
+Xleft(B): biên trái của vật thể B.
+Xright(A): biên phải của vật thể A.
+A, B: hai vật thể đang được so sánh vị trí tương đối.
+dX = Xleft(A) - Xright(B) nếu B nằm bên trái A
+Ngược lại, nếu hai vật thể có phần chiếu ngang giao nhau, hệ thống gán khoảng cách ngang bằng 0. Song song với đó, độ chênh lệch theo phương sâu giữa hai vật thể được xác định bởi:
+Công thức 8: Khoảng cách ngang khi hai vật thể giao nhau
+dX = 0
+Trong đó:
+dX: khoảng cách ngang giữa hai vật thể.
+dX = 0: hai vật thể có phần chiếu ngang chồng lấn hoặc giao nhau.
+Công thức 9: Chênh lệch độ sâu giữa hai vật thể
+dZ = ZB - ZA
+Trong đó:
+dZ: độ chênh lệch theo phương sâu giữa hai vật thể.
+ZB: khoảng cách từ camera đến vật thể B.
+ZA: khoảng cách từ camera đến vật thể A.
+Từ hai thành phần trên, khoảng cách tương đối giữa hai vật thể trong mặt phẳng ngang - sâu được tính bằng công thức Euclid:
+Công thức 10: Khoảng cách tổng hợp giữa hai vật thể
+d(A, B) = sqrt(dX^2 + dZ^2)
+Trong đó:
+d(A, B): khoảng cách tương đối giữa hai vật thể trong mặt phẳng ngang - sâu.
+dX: khoảng cách ngang giữa hai vật thể.
+dZ: chênh lệch khoảng cách theo phương sâu giữa hai vật thể.
+Công thức này được dùng để ước lượng xem hai vật thể cách nhau bao nhiêu trong không gian quan sát. So với cách lấy trực tiếp khoảng cách giữa hai tâm, phương pháp này phù hợp hơn với bài toán mô tả cảnh vì nó phản ánh tốt hơn trường hợp hai vật thể đứng sát nhau, chạm nhau hoặc chồng lấn một phần theo chiều ngang.
+Từ các giá trị tọa độ và khoảng cách đã tính, hệ thống tiếp tục suy ra quan hệ không gian giữa các vật thể. Cụ thể, nếu vật thể còn lại nằm hoàn toàn về phía bên phải miền chiếm chỗ của vật thể tham chiếu, hệ thống gán quan hệ "phải"; nếu nằm hoàn toàn về bên trái thì gán quan hệ "trái". Trong trường hợp hai vật thể có vùng ngang giao nhau, hệ thống so sánh chênh lệch độ sâu. Nếu |dZ| lớn hơn một ngưỡng nhất định thì vật thể sẽ được xác định là "phía trước" hoặc "phía sau"; nếu chênh lệch độ sâu nhỏ thì quan hệ được gán là "ngay cạnh". Ngoài ra, với những vật thể có vùng ngang chồng lấn và có độ lệch theo phương thẳng đứng đủ lớn, hệ thống còn xác định thêm các quan hệ "bên trên" và "bên dưới".
+Một điểm cần lưu ý là không phải mọi vật thể được phát hiện đều được dùng để xây dựng mô tả không gian. Trước khi tính quan hệ, hệ thống lọc các vật thể có độ tin cậy thấp hoặc có khoảng cách nằm ngoài miền hợp lệ. Sau đó, các vật thể còn lại được sắp xếp theo mức ưu tiên dựa trên độ tin cậy và khoảng cách đến người dùng, trong đó các lớp nền như wall, floor, ceiling, window bị giảm trọng số. Cách làm này giúp hệ thống tập trung mô tả những vật thể có ý nghĩa hơn đối với người dùng.
+Tóm lại, phương pháp xác định khoảng cách trong dự án được thực hiện theo chuỗi bước gồm: phát hiện vật thể, lấy độ sâu tại tâm vật thể để xác định khoảng cách đến người dùng, chuyển đổi sang hệ tọa độ tương đối (X, Y, Z), tính khoảng cách giữa các vật thể bằng công thức Euclid trên hai thành phần ngang - sâu, và cuối cùng suy ra quan hệ không gian như trái, phải, trước, sau, trên, dưới hoặc ngay cạnh. Cách tiếp cận này phù hợp với mục tiêu của hệ thống là hỗ trợ người khiếm thị không chỉ nhận biết vật thể nào xuất hiện trong khung hình mà còn hiểu được vị trí tương đối của chúng trong môi trường xung quanh.
+2.5. Xác định hướng vật thể theo mô hình đồng hồ
+Bên cạnh việc xác định khoảng cách và kích thước vật thể, hệ thống còn cần mô tả hướng xuất hiện của vật thể so với camera để người dùng dễ hình dung vị trí trong không gian. Trong hệ thống này, camera được xem là vật mốc quan sát, còn vị trí của vật thể trong ảnh được chuyển đổi thành hướng tương đối theo quy ước mặt đồng hồ từ 1 giờ đến 12 giờ.
+Trước tiên, hệ thống sử dụng kết quả phát hiện đối tượng từ YOLO để lấy bounding box của vật thể. Từ bounding box này, tâm của vật thể được tính theo tọa độ pixel:
+Công thức 11: Công thức xác định tâm của vật thể
+Trong đó:
+x_c: hoành độ tâm của vật thể.
+y_c: tung độ tâm của vật thể.
+x_1, y_1: tọa độ góc trên bên trái của bounding box.
+x_2, y_2: tọa độ góc dưới bên phải của bounding box.
+Trong đó, ((x_1, y_1)) và ((x_2, y_2)) là tọa độ hai góc của bounding box, còn ((x_c, y_c)) là tọa độ tâm của vật thể trên ảnh.
+Tiếp theo, tâm ảnh được xem là hướng nhìn thẳng của camera:
+Công thức 12: Công thức xác định tâm ảnh
+Trong đó:
+x_0: hoành độ tâm ảnh.
+y_0: tung độ tâm ảnh.
+W: chiều rộng ảnh.
+H: chiều cao ảnh.
+Trong đó, (W) và (H) lần lượt là chiều rộng và chiều cao của ảnh. Độ lệch của vật thể so với tâm camera được xác định bởi:
+Công thức 13: Công thức xác định độ lệch so với tâm ảnh
+Trong đó:
+Δx: độ lệch của vật thể theo phương ngang so với tâm ảnh.
+Δy: độ lệch của vật thể theo phương dọc so với tâm ảnh.
+x_c, y_c: tọa độ tâm của vật thể.
+x_0, y_0: tọa độ tâm của ảnh.
+Dựa trên độ lệch này, hệ thống có thể xác định vật thể đang nằm lệch về bên trái, bên phải, phía trên hoặc phía dưới so với hướng nhìn trung tâm. Để mô tả trực quan hơn cho người dùng, hướng của vật thể được ánh xạ sang dạng giờ đồng hồ. Theo quy ước này, 12 giờ biểu thị vật thể nằm phía trên hoặc gần hướng chính giữa phía trước, 3 giờ biểu thị bên phải, 6 giờ biểu thị phía dưới và 9 giờ biểu thị bên trái.
+Góc của vật thể so với tâm ảnh có thể được tính bằng công thức:
+Công thức 14: Công thức xác định góc định hướng của vật thể
+Trong đó:
+θ: góc định hướng của vật thể so với tâm ảnh.
+Δx: độ lệch của vật thể theo phương ngang.
+Δy: độ lệch của vật thể theo phương dọc.
+atan2: hàm lượng giác dùng để xác định góc theo đúng góc phần tư.
+Sau đó, góc này được chuyển đổi và chia thành 12 vùng tương ứng với 12 vị trí trên mặt đồng hồ. Ví dụ, vật thể nằm lệch phải phía trên có thể được mô tả ở hướng 1–2 giờ, vật thể nằm bên phải là 3 giờ, lệch phải phía dưới là 4–5 giờ, phía dưới là 6 giờ, lệch trái phía dưới là 7–8 giờ, bên trái là 9 giờ, và lệch trái phía trên là 10–11 giờ.
+Trong hệ thống, thông tin hướng giờ đồng hồ được kết hợp với khoảng cách từ Depth Anything V2 và kết quả nhận diện từ YOLO để tạo câu mô tả dễ hiểu hơn, chẳng hạn: “Cái ghế nằm ở hướng 2 giờ, cách khoảng 1,5 mét” hoặc “Cái bàn ở hướng 10 giờ, gần bên trái phía trước”. Cách biểu diễn này đặc biệt hữu ích cho người khiếm thị vì giúp mô tả vị trí vật thể một cách ngắn gọn, trực quan và dễ định hướng.
+Tuy nhiên, hướng giờ đồng hồ được tính dựa trên vị trí vật thể trong ảnh nên chỉ phản ánh hướng tương đối theo góc nhìn của camera. Kết quả có thể thay đổi nếu camera bị nghiêng, người dùng xoay thiết bị hoặc vật thể nằm ngoài vùng quan sát. Vì vậy, để tăng độ ổn định, hệ thống có thể kết hợp thêm ngưỡng chia vùng, hiệu chỉnh góc nhìn camera hoặc cảm biến định hướng nếu cần.
+2.6. Kiến trúc phần mềm
+FastAPI: Framework Python hiện đại, hỗ trợ asynchronous, rất phù hợp cho AI service.
+Client-Server Model: Client thu âm và chụp ảnh, Server xử lý toàn bộ pipeline nặng.
+ONNX Runtime: Cho phép chạy model Depth Anything V2 trên CPU với tốc độ chấp nhận được.
+2.7. Các thư viện hỗ trợ
+OpenCV: Xử lý ảnh và video.
+PyTorch: Train và inference model.
+MediaPipe: Landmark detection.
+Pydantic & Uvicorn: Xử lý API.
+2.8. Prompt System
+Prompt System là tập hợp các chỉ dẫn được thiết kế để định hướng cách mô hình ngôn ngữ lớn xử lý đầu vào và tạo đầu ra. Trong các hệ thống sử dụng LLM, prompt đóng vai trò như lớp điều khiển hành vi của mô hình, giúp mô hình hiểu rõ nhiệm vụ cần thực hiện, phạm vi xử lý, định dạng phản hồi và các ràng buộc cần tuân theo.
+Một prompt thường bao gồm các thành phần chính như vai trò của mô hình, mô tả nhiệm vụ, ngữ cảnh đầu vào, quy tắc xử lý và định dạng đầu ra mong muốn. Ví dụ, trong hệ thống hỗ trợ người khiếm thị, prompt có thể quy định LLM chỉ tập trung vào việc phân loại lệnh, tạo mô tả không gian ngắn gọn, tránh trả lời ngoài phạm vi và trả về kết quả theo cấu trúc. Nhờ đó, mô hình có thể tạo phản hồi ổn định và phù hợp hơn với bài toán.
+Trong hệ thống này, Prompt System được sử dụng để tăng độ chính xác khi phân loại lệnh và tối ưu nội dung mô tả trước khi chuyển sang Text-to-Speech. Thay vì để LLM tự do suy luận trên toàn bộ ngữ cảnh, hệ thống chỉ cung cấp các thông tin cần thiết như câu lệnh người dùng, danh sách vật thể phát hiện được, khoảng cách ước lượng và quan hệ không gian. Việc giới hạn ngữ cảnh này giúp giảm nhiễu thông tin, hạn chế hiện tượng trả lời sai hoặc lan man, đồng thời cải thiện tốc độ xử lý.
+Bên cạnh đó, prompt còn giúp chuẩn hóa đầu ra của LLM. Kết quả phản hồi có thể được yêu cầu tuân theo một định dạng cố định, chẳng hạn như loại lệnh, đối tượng cần tìm và câu mô tả cuối cùng. Điều này giúp các module khác trong hệ thống dễ dàng đọc, kiểm tra và sử dụng kết quả, đặc biệt là module Text-to-Speech hoặc giao diện client.
+Tóm lại, Prompt System là thành phần quan trọng khi tích hợp LLM vào hệ thống thực tế. Việc thiết kế prompt hợp lý giúp mô hình hoạt động đúng phạm vi, tăng độ chính xác khi hiểu lệnh, giảm sai lệch đầu ra và tạo phản hồi tự nhiên, ngắn gọn, phù hợp với người dùng.
+CHƯƠNG 3. PHÂN TÍCH YÊU CẦU HỆ THỐNG
+3.1. Yêu cầu chức năng
+Hệ thống cần đáp ứng các yêu cầu chức năng chính sau:
+Quản lý đầu vào: Hệ thống phải có khả năng thu nhận dữ liệu từ người dùng và môi trường, bao gồm thu âm giọng nói và chụp ảnh từ camera. Dữ liệu đầu vào cần được lưu trữ hoặc truyền đến các module xử lý tiếp theo một cách ổn định.
+Xử lý lệnh giọng nói: Hệ thống phải hỗ trợ chuyển đổi giọng nói của người dùng thành văn bản. Sau đó, văn bản cần được phân tích để xác định loại lệnh hoặc yêu cầu mà người dùng đưa ra, chẳng hạn như yêu cầu mô tả cảnh, hướng dẫn tìm đồ vật.
+Phân tích thị giác: Hệ thống phải có khả năng xử lý ảnh đầu vào để nhận diện các vật thể xuất hiện trong khung hình. Bên cạnh đó, hệ thống cần ước lượng chiều sâu của cảnh, xác định khoảng cách từ camera đến vật thể và tính toán vị trí vật thể trong không gian 3 chiều.
+Xây dựng mô tả không gian: Hệ thống cần tạo ra mô tả không gian dựa trên kết quả phân tích hình ảnh. Mô tả phải thể hiện được vị trí và quan hệ giữa các vật thể, chẳng hạn như bên trái, bên phải, phía trên, phía dưới, gần, xa hoặc trước/sau so với người dùng.
+Tối ưu nội dung đầu ra: Hệ thống phải có chức năng làm mượt và chuẩn hóa văn bản mô tả trước khi chuyển sang giọng nói. Nội dung đầu ra cần ngắn gọn, dễ hiểu, tự nhiên và phù hợp với ngữ cảnh sử dụng.
+Trả về kết quả: Hệ thống cần trả về kết quả dưới dạng có cấu trúc, cụ thể là JSON. Kết quả bao gồm loại lệnh đã được phân loại và nội dung mô tả tương ứng, nhằm hỗ trợ việc tích hợp với giao diện người dùng, module Text-to-Speech hoặc các thành phần xử lý khác.
+3.2. Yêu cầu phi chức năng
+Bên cạnh các chức năng chính, hệ thống cần đáp ứng một số yêu cầu phi chức năng nhằm đảm bảo khả năng vận hành ổn định, thuận tiện và phù hợp với mục tiêu ứng dụng:
+Thời gian phản hồi: Hệ thống cần có thời gian phản hồi nhanh để đảm bảo trải nghiệm sử dụng theo thời gian thực. Trong điều kiện chạy trên CPU và kết nối mạng lý tưởng, thời gian từ khi nhận đầu vào đến khi trả về kết quả mô tả nên không vượt quá 3 giây đối với một yêu cầu xử lý thông thường.
+Độ chính xác ước lượng chiều sâu: Sau khi thực hiện hiệu chỉnh, kết quả ước lượng khoảng cách từ mô hình chiều sâu cần đạt sai số trong khoảng cho phép, cụ thể dưới 15–20% so với khoảng cách thực tế. Mức sai số này phù hợp với mục tiêu hỗ trợ nhận thức không gian, tuy nhiên không thay thế cho các thiết bị đo khoảng cách chuyên dụng.
+Tính dễ sử dụng: Hệ thống cần được thiết kế thân thiện với người dùng, đặc biệt là người khiếm thị. Việc tương tác thông qua giọng nói và nhận phản hồi bằng âm thanh, giúp người dùng sử dụng hệ thống mà không phụ thuộc vào giao diện hình ảnh.
+Khả năng triển khai: Hệ thống cần có khả năng chạy trên phần cứng thông thường, chẳng hạn như máy tính cá nhân hoặc laptop phổ thông. Các mô hình và thuật toán được lựa chọn cần cân bằng giữa độ chính xác và hiệu năng, hạn chế phụ thuộc vào phần cứng chuyên dụng như GPU cao cấp.
+3.3. Các Use Case chính
+Các use case chính của hệ thống mô tả những tình huống sử dụng tiêu biểu mà người dùng có thể thực hiện trong quá trình tương tác với hệ thống.
+Use Case 1: Mô tả toàn bộ cảnh trước mặt, người dùng yêu cầu hệ thống mô tả tổng quan môi trường phía trước. Hệ thống sẽ chụp ảnh, nhận diện các vật thể xuất hiện trong khung hình, ước lượng khoảng cách và tạo mô tả ngắn gọn về bố cục không gian, bao gồm các vật thể chính và vị trí tương đối của chúng.
+Use Case 2: Xác định khoảng cách đến một vật cụ thể, người dùng yêu cầu biết khoảng cách đến một vật thể cụ thể, ví dụ như “cái ghế ở đâu” hoặc “bàn cách tôi bao xa”. Hệ thống sẽ xác định vật thể được nhắc đến trong ảnh, kết hợp kết quả nhận diện với bản đồ chiều sâu để ước lượng khoảng cách từ camera đến vật thể, sau đó trả về kết quả bằng văn bản hoặc giọng nói.
+Use Case 3: Tìm và mô tả vị trí vật dụng, người dùng yêu cầu tìm một vật dụng trong môi trường xung quanh. Hệ thống sẽ kiểm tra xem vật thể đó có xuất hiện trong ảnh hay không. Nếu phát hiện được, hệ thống mô tả vị trí của vật thể theo quan hệ không gian như bên trái, bên phải, phía trước, gần hoặc xa. Nếu không phát hiện được, hệ thống phản hồi rằng chưa tìm thấy vật thể trong khung hình hiện tại.
+CHƯƠNG 4. THIẾT KẾ HỆ THỐNG VÀ KIẾN TRÚC DỰ ÁN
+4.1. Tổng quan hệ thống (Pipeline)
+Hình 5: Sơ đồ tổng quan hệ thống của đề tài
+Sơ đồ này mô tả toàn bộ pipeline xử lý của hệ thống, từ lúc thu nhận dữ liệu đầu vào cho đến khi tạo ra câu trả lời cuối cùng cho người dùng. Hệ thống được tổ chức theo mô hình client-server. Trong đó, phía client chịu trách nhiệm thu nhận dữ liệu đầu vào và phát lại kết quả đầu ra, còn phía server đảm nhiệm toàn bộ các bước xử lý cốt lõi như nhận dạng giọng nói, phân tích ý định lệnh, xử lý thị giác máy tính và xây dựng nội dung phản hồi.
+Ở phía client, ứng dụng thực hiện hai thao tác chính: ghi âm lệnh nói của người dùng và chụp ảnh khung cảnh phía trước. Trước khi gửi dữ liệu lên server, tín hiệu âm thanh được tiền xử lý để loại bỏ các đoạn im lặng. Bước này giúp giảm dung lượng truyền tải, đồng thời loại bỏ phần thông tin không cần thiết, từ đó hỗ trợ quá trình nhận dạng giọng nói hoạt động hiệu quả hơn. Sau đó, client gửi đồng thời audio và image lên server dưới dạng một request duy nhất.
+Khi dữ liệu đến server, hệ thống tách ra thành hai nhánh xử lý song song. Nhánh thứ nhất là Task 1, có nhiệm vụ xử lý audio. Ở bước này, hệ thống thực hiện chuyển giọng nói thành văn bản bằng mô hình STT, sau đó phân tích nội dung văn bản để suy ra ý định của người dùng. Kết quả đầu ra của Task 1 là một lệnh nội bộ đã được chuẩn hóa, chẳng hạn như O_PHIA_TRUOC_CO_GI hoặc TIM_DEN_LAY: chai.
+Nhánh thứ hai là Task 2, chạy đồng thời với Task 1 và xử lý dữ liệu ảnh. Task 2 thực hiện phân tích thị giác để phát hiện vật thể, ước lượng độ sâu, xây dựng quan hệ không gian và trích xuất các dữ liệu có cấu trúc về cảnh. Kết quả của bước này không phải là câu mô tả hoàn chỉnh, mà là một tập dữ liệu trung gian gọi là fact bundle, bao gồm các thông tin như quan hệ cảnh (scene_graph), khoảng cách tóm tắt (distance_desc), danh sách vật thể (object_brief) và thông tin tay (hand_info) nếu có.
+Sau khi Task 1 và Task 2 hoàn tất, hệ thống chuyển sang Task 3. Ở bước này, server nhận đầu vào là intent từ Task 1 và fact bundle từ Task 2 để xây dựng mô tả thô phù hợp với đúng yêu cầu của người dùng. Nội dung mô tả sau đó được đưa qua module làm mượt văn bản, nhằm tinh chỉnh câu trả lời sao cho tự nhiên hơn, ngắn gọn hơn và phù hợp hơn khi phát bằng giọng nói.
+Cuối cùng, server trả về kết quả dưới dạng JSON gồm hai trường chính là api và text. Phía client nhận phản hồi này, sau đó thực hiện Text-to-Speech để đọc câu trả lời cho người dùng. Cơ chế này giúp người khiếm thị có thể tiếp cận thông tin về môi trường xung quanh một cách trực quan, nhanh chóng và thuận tiện hơn.
+4.2. Task 1 - Pipeline xử lý tiếng nói và suy luận ý định lệnh trong hệ thống
+Task 1 là thành phần đảm nhiệm xử lý dữ liệu âm thanh đầu vào của người dùng. Mục tiêu của khối này là chuyển lệnh nói thành một biểu diễn nội bộ ổn định để các thành phần phía sau có thể xử lý được một cách nhất quán. Cụ thể, Task 1 thực hiện hai nhiệm vụ chính: nhận dạng giọng nói để thu được văn bản lệnh, và phân loại văn bản đó thành một intent nội bộ đã được chuẩn hóa. Kết quả đầu ra của Task 1 không phải là câu trả lời cho người dùng, mà là một lệnh hệ thống ở dạng trung gian, dùng làm đầu vào cho Task 3.
+4.2.1. Mục tiêu của Task 1
+Task 1 được thiết kế nhằm giải quyết các mục tiêu sau:
+Chuyển tín hiệu âm thanh tiếng Việt thành văn bản.
+Xác định ý định điều khiển của người dùng từ nội dung lời nói.
+Chuẩn hóa ý định về một tập lệnh nội bộ cố định.
+Bảo toàn tên vật thể mục tiêu trong các lệnh tìm và lấy vật.
+Như vậy, Task 1 đóng vai trò là tầng hiểu lệnh nói, trả lời câu hỏi: người dùng đang muốn hệ thống thực hiện điều gì?
+4.2.2. Vị trí của Task 1 trong toàn bộ hệ thống
+Trong pipeline tổng thể, Task 1 nhận đầu vào là tệp âm thanh từ client và chạy song song với Task 2. Nếu Task 2 trả lời cho câu hỏi “trong ảnh có gì”, thì Task 1 trả lời cho câu hỏi “người dùng đang hỏi điều gì”. Hai đầu ra này sau đó được kết hợp ở Task 3 để tạo phản hồi cuối cùng.
+Do đó, Task 1 không thực hiện bất kỳ xử lý thị giác nào và cũng không sinh câu trả lời cuối cho người dùng. Nó chỉ chịu trách nhiệm phân tích ngữ âm và ý định.
+4.2.3. Đầu vào và đầu ra của Task 1
+Đầu vào trực tiếp của Task 1 là đường dẫn tới tệp âm thanh tạm thời được server lưu lại sau khi nhận request từ client.
+Đầu ra của Task 1 gồm ba thành phần:
+api_string: lệnh nội bộ đã chuẩn hóa;
+transcript: văn bản thu được từ bước nhận dạng giọng nói;
+api_steps: thông tin thời gian xử lý của từng bước.
+Trong chế độ đầy đủ, đầu ra có dạng:
+(api_string, transcript, {"whisper_s": float, "llm_s": float})
+Trong đó:
+whisper_s là thời gian dành cho bước nhận dạng giọng nói;
+llm_s là thời gian dành cho bước phân loại ý định.
+Nếu xảy ra lỗi nghiêm trọng trong quá trình xử lý, Task 1 trả về giá trị rỗng để server có thể fallback sang trạng thái KHONG_XAC_DINH.
+4.2.4. Pipeline xử lý
+Bước nhận dạng giọng nói
+Bước đầu tiên của Task 1 là nhận dạng giọng nói. Ở bước này, hệ thống đọc toàn bộ nội dung tệp âm thanh và gửi lên dịch vụ phiên âm. Mô hình STT được cấu hình để:
+sử dụng ngôn ngữ tiếng Việt;
+áp dụng một prompt ngữ cảnh phù hợp;
+trả về kết quả ở dạng văn bản thuần.
+Kết quả của bước này là transcript, tức nội dung người dùng đã nói sau khi được chuyển từ âm thanh sang chữ. Đồng thời, hệ thống cũng đo độ trễ của bước STT để phục vụ phân tích hiệu năng.
+Ví dụ, nếu người dùng nói: “phía trước có gì”, thì đầu ra của bước này có thể là:
+phía trước có gì
+Kiểm tra độ hợp lệ của transcript
+Sau khi có transcript, hệ thống áp dụng một bước kiểm tra nhanh để loại bỏ các trường hợp âm thanh quá ngắn, không rõ ràng hoặc chỉ chứa nhiễu. Nếu transcript rỗng hoặc có độ dài dưới một ngưỡng tối thiểu, hệ thống sẽ không tiếp tục phân loại ý định mà trả về ngay trạng thái KHONG_XAC_DINH.
+Mục đích của bước này là:
+tránh tốn thêm chi phí cho bước phân loại lệnh;
+giảm nguy cơ suy luận sai trên dữ liệu âm thanh kém chất lượng;
+duy trì tính ổn định của pipeline.
+Phân loại ý định bằng mô hình ngôn ngữ
+Ở bước này, transcript được đưa vào mô hình chat completion cùng với một system prompt chuyên biệt để ép mô hình chỉ sinh ra kết quả theo đúng định dạng mong muốn.
+Mô hình được yêu cầu trả về duy nhất một dòng có dạng:
+API: <intent>
+Một số intent hợp lệ gồm:
+THIET_LAP_CAU_HINH
+O_PHIA_TRUOC_CO_GI
+O_BEN_TRAI_CO_GI
+O_BEN_PHAI_CO_GI
+O_PHIA_DUOI_CO_GI
+TIM_DEN_LAY: <tên vật>
+KHONG_LIEN_QUAN
+Việc giới hạn định dạng đầu ra như vậy giúp đơn giản hóa bước parse phía sau và giảm nguy cơ mô hình sinh ra câu trả lời dài dòng hoặc không đúng schema.
+Ví dụ pipeline hoàn chỉnh của Task 1
+Giả sử người dùng nói: “Tôi muốn tìm cái ly”
+Pipeline Task 1 có thể diễn ra như sau:
+Audio được đưa vào mô hình STT.
+STT trả về transcript: “Tôi muốn tìm cái ly”
+Hệ thống gọi LLM để phân loại ý định.
+LLM trả về:API: TIM_DEN_LAY: cái ly
+Kết quả cuối cùng của Task 1 là:TIM_DEN_LAY: cái ly
+Task 1 là thành phần mở đầu của pipeline xử lý trên server, chịu trách nhiệm chuyển đổi lệnh nói của người dùng thành một biểu diễn ý định nội bộ rõ ràng và ổn định. Mặc dù về mặt kỹ thuật đây chỉ là một khối STT và phân loại lệnh, nhưng vai trò của nó là nền tảng cho toàn bộ hệ thống, vì mọi quyết định diễn giải ở Task 3 đều phụ thuộc trực tiếp vào kết quả mà Task 1 cung cấp.
+4.3. Task 2 - Pipeline xử lý thị giác trong hệ thống
+Task 2 là thành phần quan trọng nhất trong hệ thống, đảm nhiệm phân tích dữ liệu hình ảnh trong hệ thống hỗ trợ người khiếm thị. Nhiệm vụ chính của khối này là tiếp nhận ảnh đầu vào, phát hiện các vật thể xuất hiện trong cảnh, ước lượng độ sâu tương đối, xây dựng quan hệ không gian giữa các vật thể, đồng thời tạo ra các dữ liệu trung gian có cấu trúc để phục vụ cho khối sinh phản hồi ở bước sau. Khác với cách tiếp cận sinh mô tả ngôn ngữ trực tiếp từ ảnh, Task 2 trong hệ thống này chỉ dừng ở mức trích xuất và tổ chức thông tin thị giác thành các “scene facts”, từ đó giúp tách biệt rõ ràng giữa bài toán cảm nhận thị giác và bài toán diễn giải ngôn ngữ.
+4.3.1. Mục tiêu của Task 2
+Task 2 được thiết kế nhằm giải quyết các mục tiêu sau:
+Phát hiện các vật thể trong ảnh bằng mô hình nhận dạng chính.
+Mở rộng khả năng phát hiện với các nhãn mở thông qua bộ phát hiện open-vocabulary.
+Ước lượng độ sâu của cảnh để xác định khoảng cách tương đối giữa camera và vật thể.
+Hiệu chỉnh dữ liệu độ sâu và tiêu cự khi cần thiết bằng thông tin bàn tay người dùng.
+Chuyển các kết quả phát hiện sang dạng tọa độ tương đối trong không gian quan sát.
+Lọc bỏ các vật thể nhiễu hoặc ít giá trị mô tả.
+Xây dựng các dữ liệu có cấu trúc như scene_graph, distance_desc, object_brief và hand_info.
+Cung cấp “fact bundle” cho Task 3 để phục vụ sinh mô tả theo đúng ý định của người dùng.
+Như vậy, Task 2 không sinh câu trả lời cuối cùng, mà đóng vai trò như một tầng phân tích không gian và tổ chức dữ liệu thị giác.
+4.3.2. Kiến trúc tổng quát của pipeline
+Pipeline của Task 2 được tổ chức theo hướng song song hóa nhằm giảm độ trễ xử lý. Sau khi ảnh đầu vào được đọc và resize về kích thước làm việc phù hợp, hệ thống chia thành ba luồng xử lý chính:
+Luồng phát hiện vật thể chính.
+Luồng phát hiện vật thể open-vocabulary.
+Luồng ước lượng độ sâu và hiệu chuẩn bằng bàn tay.
+Ba luồng này được thực thi đồng thời. Sau khi hoàn tất, hệ thống hợp nhất kết quả nhận dạng, gắn thông tin độ sâu vào từng vật thể, xây dựng các đối tượng dữ liệu trung gian, và cuối cùng tạo ra các đầu ra có cấu trúc.
+4.3.3. Tiền xử lý ảnh đầu vào
+Ảnh đầu vào được đọc bằng OpenCV. Nếu ảnh không thể đọc được, hệ thống trả về trạng thái lỗi tương ứng và dừng xử lý. Trong trường hợp hợp lệ, ảnh sẽ được resize theo tỉ lệ để giới hạn cạnh lớn nhất theo một ngưỡng cấu hình sẵn. Mục đích của bước này là:
+giảm chi phí tính toán;
+đảm bảo ảnh có kích thước phù hợp với các mô hình suy luận;
+giữ nguyên tỷ lệ hình học ban đầu để tránh làm sai lệch quan hệ không gian.
+Ảnh sau resize sẽ được dùng chung cho cả ba luồng xử lý song song.
+4.3.4. Luồng phát hiện vật thể chính
+Luồng thứ nhất sử dụng bộ phát hiện vật thể chính, đóng vai trò nhận dạng các vật thể phổ biến trong cảnh. Tùy cấu hình, bộ phát hiện này có thể hoạt động theo hai chế độ:
+phát hiện trên toàn ảnh;
+phát hiện theo cơ chế chia tile để cải thiện khả năng bắt các vật thể nhỏ hoặc nằm ở các vùng khó quan sát.
+Ngoài ra, sau bước phát hiện và lọc sơ bộ, hệ thống có thể thực hiện một bước redetect cục bộ để xử lý các trường hợp hộp bao chồng lấn hoặc cùng nhãn nhưng chưa được phân tách tốt. Kết quả của luồng này là danh sách các bounding box kèm theo nhãn và độ tin cậy.
+4.3.5. Luồng phát hiện open-vocabulary
+Luồng thứ hai thực hiện phát hiện vật thể theo hướng open-vocabulary. Khác với bộ phát hiện chính vốn chỉ nhận dạng được các lớp đã biết trước, luồng này sử dụng tập nhãn mở được chuẩn bị từ trước để phát hiện thêm các vật thể ngoài bộ nhãn cố định. Điều này giúp hệ thống có khả năng linh hoạt hơn khi xử lý những tình huống thực tế đa dạng.
+Kết quả của luồng open-vocabulary cũng được biểu diễn dưới dạng danh sách các record phát hiện gồm tọa độ hộp bao, nhãn và độ tin cậy. Sau đó, các record này sẽ được hợp nhất với kết quả từ bộ phát hiện chính.
+4.3.6. Luồng ước lượng độ sâu và hiệu chuẩn bằng tay
+Luồng thứ ba bao gồm hai nhiệm vụ đồng thời: ước lượng độ sâu của toàn cảnh và xử lý thông tin bàn tay người dùng để phục vụ hiệu chuẩn.
+Trước hết, hệ thống sử dụng mô hình Depth Anything để suy luận bản đồ độ sâu thô của ảnh. Bản đồ này cung cấp thông tin về sự gần – xa tương đối của các vùng trong ảnh. Tiếp theo, hệ thống sử dụng MediaPipe Hands để phát hiện landmark bàn tay trên toàn ảnh. Nếu phát hiện thành công, hệ thống có thể:
+xác định bounding box của bàn tay;
+xác định tâm tham chiếu của tay;
+tính tiêu cự gần đúng của camera dựa trên kích thước bàn tay trên ảnh và khoảng cách thực tế đã biết;
+hiệu chỉnh hệ số scale của bản đồ độ sâu từ một điểm chuẩn duy nhất là bàn tay.
+Kết quả của luồng này không chỉ phục vụ chế độ thiết lập cấu hình camera, mà còn hỗ trợ các tác vụ tương tác như xác định xem người dùng đã chạm vào vật thể hay chưa.
+4.3.7. Hợp nhất kết quả nhận dạng
+Sau khi hai luồng phát hiện hoàn tất, hệ thống chuyển đổi đầu ra của từng bộ phát hiện về cùng một định dạng record thống nhất. Mỗi record bao gồm: tọa độ hộp bao; nhãn lớp; độ tin cậy; nguồn phát hiện.
+Bước tiếp theo là hợp nhất các record từ bộ phát hiện chính và bộ phát hiện open-vocabulary. Mục tiêu của bước này là loại bỏ các phát hiện trùng lặp và giữ lại danh sách vật thể cuối cùng đáng tin cậy nhất. Quá trình hợp nhất được thực hiện bằng cơ chế so khớp hộp bao và ngưỡng chồng lấn.
+4.3.8. Xây dựng object_data
+Từ danh sách record phát hiện cuối cùng, hệ thống xây dựng một tập dữ liệu trung gian gọi là object_data. Với mỗi vật thể, hệ thống thực hiện các thao tác sau:
+lấy tâm của bounding box;
+tra giá trị độ sâu tại tâm đó từ bản đồ độ sâu đã resize;
+ước lượng kích thước thật gần đúng của vật thể dựa trên độ sâu và tiêu cự;
+đóng gói kết quả thành một bản ghi gồm hình học ảnh, nhãn, độ sâu và kích thước thật.
+object_data là cầu nối giữa tầng nhận dạng thuần túy và tầng biểu diễn không gian có cấu trúc.
+4.3.9. Hiệu chỉnh nhãn theo kích thước thật
+Một số vật thể có hình dạng tương đối giống nhau nhưng kích thước thực tế khác biệt đáng kể. Để giảm các lỗi phân loại trong trường hợp này, hệ thống áp dụng một bước relabel dựa trên kích thước ước lượng. Ví dụ, một vật thể bị nhận nhầm là cốc nhưng có kích thước quá lớn có thể được đổi nhãn sang xô nếu phù hợp hơn với cấu hình nhóm vật thể tương đồng.
+Bước này giúp cải thiện chất lượng dữ liệu đầu ra mà không cần sửa đổi trực tiếp mô hình detector.
+4.3.10. Lọc và chuyển đổi sang tọa độ không gian
+Sau bước relabel, hệ thống chuyển object_data sang các object hình học có cấu trúc. Trong quá trình này, mỗi vật thể được:
+lọc theo ngưỡng độ tin cậy;
+lọc theo khoảng độ sâu hợp lệ;
+chuyển sang hệ tọa độ tương đối so với camera;
+gán hướng đồng hồ;
+sắp xếp theo mức độ ưu tiên mô tả.
+Từ đây, hệ thống tạo ra hai tập vật thể khác nhau:
+valid_objects: danh sách gọn, dùng để xây dựng quan hệ cảnh và khoảng cách;
+response_objects: danh sách phong phú hơn, dùng để xây dựng object_brief.
+Việc tách thành hai danh sách cho phép hệ thống vừa giữ được biểu diễn cảnh ngắn gọn, vừa vẫn bảo toàn đủ thông tin chi tiết cho khối trả lời.
+4.3.11. Gói dữ liệu đầu ra của Task 2
+Xây dựng scene_graph
+scene_graph là biểu diễn cấu trúc của cảnh ở mức quan hệ giữa các vật thể. Nó không phải là câu mô tả tiếng Việt, mà là một scene-level fact model.
+Để tạo scene_graph, hệ thống trước tiên chọn một vật neo trung tâm của cảnh, gọi là neo. Vật này thường là vật gần camera và gần trung tâm ảnh nhất. Sau đó, hệ thống chọn nhóm vật nằm gần cùng mặt phẳng độ sâu với vật neo, sắp xếp chúng theo trật tự trái sang phải, rồi nối thành một backbone ngang. Trên backbone đó, hệ thống tiếp tục gắn các quan hệ phụ như: trên; dưới; phía sau; ngay cạnh; trái/phải.
+Kết quả cuối cùng là một cấu trúc dữ liệu mô tả cảnh theo dạng đồ thị quan hệ, có thể dùng để dựng mô tả tổng quát khi cần.
+Xây dựng distance_desc
+Bên cạnh scene_graph, hệ thống còn tạo distance_desc là một chuỗi tóm tắt ngắn gọn khoảng cách từ camera đến các vật thể quan trọng. Mỗi phần tử trong chuỗi chứa:
+tên vật thể đã dịch; số thứ tự ổn định theo lớp; khoảng cách đến camera; hướng đồng hồ nếu có.
+Ví dụ, chuỗi này có thể mang dạng:
+cái ghế 1: 1.20m, hướng 3 giờ; cuốn sách 1: 0.80m, hướng 11 giờ
+Dữ liệu này đặc biệt hữu ích cho các truy vấn cần nhấn mạnh khoảng cách và phương hướng nhanh, chẳng hạn như các tình huống tìm và lấy vật.
+Xây dựng hand_info
+Nếu luồng depth và hand calibration phát hiện được bàn tay ở khoảng cách đủ gần và đủ tin cậy, hệ thống tạo thêm hand_info. Đây là thông tin tham chiếu ở mức scene, bao gồm: bounding box của bàn tay; tâm tham chiếu; độ sâu của tay; tọa độ tương đối của tay trong hệ metric; cờ xác nhận tính hợp lệ của tham chiếu tay.
+hand_info đóng vai trò là điểm tham chiếu trung gian để hệ thống đánh giá quan hệ giữa tay và từng vật thể trong ảnh.
+Xây dựng object_brief
+Từ response_objects, hệ thống tạo ra object_brief, là danh sách fact theo từng vật thể. Mỗi phần tử của object_brief bao gồm các thông tin như: nhãn gốc; tên hiển thị đã dịch; khoảng cách tới camera; hướng đồng hồ; độ tin cậy; tọa độ box; quan hệ với tay nếu có.
+Nếu hand_info hợp lệ, mỗi vật thể còn được gắn thêm các thuộc tính như: tay đã chạm vào vật hay chưa; vật nằm bên trái, bên phải, phía trước hay phía sau tay; khoảng cách tương đối giữa tay và vật. object_brief là đầu ra quan trọng nhất của Task 2 đối với Task 3, vì nó cho phép khối phản hồi chọn đúng vật thể mục tiêu, lọc theo vùng quan tâm, hoặc xây dựng chỉ dẫn theo ngữ cảnh.
+Tóm lại, sau khi hoàn tất toàn bộ pipeline, Task 2 trả về một “fact bundle” gồm scene_graph; distance_desc; object_brief; hand_info; calibration_description; calibration_info
+Trong đó, với các intent thông thường, Task 3 chủ yếu sử dụng bốn thành phần đầu để xây dựng mô tả phù hợp với ngữ cảnh câu hỏi. Riêng với chế độ thiết lập cấu hình, hệ thống sử dụng calibration_description và calibration_info.
+Task 2 là tầng trung gian quan trọng giữa dữ liệu ảnh thô và phản hồi ngôn ngữ. Nếu Task 1 trả lời câu hỏi “người dùng muốn biết điều gì”, thì Task 2 trả lời câu hỏi “trong ảnh đang có những gì và chúng liên hệ với nhau như thế nào”. Khối này không quyết định cách diễn đạt cuối cùng, nhưng nó cung cấp toàn bộ cơ sở dữ liệu không gian để Task 3 có thể tạo ra phản hồi chính xác, ngắn gọn và phù hợp với từng ý định.
+Nhờ cách tổ chức này, hệ thống đạt được ba ưu điểm chính:
+tách biệt rõ perception và language generation;
+dễ mở rộng cho các intent mới;
+dễ kiểm thử và phân tích lỗi ở từng tầng xử lý.
+4.4. Task 3 - Pipeline sinh phản hồi ngôn ngữ trong hệ thống
+Task 3 là thành phần đảm nhiệm việc tạo ra câu trả lời cuối cùng cho người dùng từ hai nguồn thông tin chính: ý định lệnh được suy ra ở Task 1 và dữ liệu thị giác có cấu trúc được tạo ở Task 2. Nếu Task 1 trả lời câu hỏi người dùng muốn gì, và Task 2 trả lời câu hỏi trong ảnh có gì, thì Task 3 là khối chịu trách nhiệm kết hợp hai nguồn đó lại để tạo thành phản hồi tự nhiên, ngắn gọn và phù hợp với ngữ cảnh sử dụng thực tế của người khiếm thị.
+Khác với Task 2, Task 3 không thực hiện phát hiện vật thể hay tính toán hình học. Ngược lại, nó hoạt động ở tầng diễn giải và sinh ngôn ngữ. Đầu ra cuối cùng của Task 3 là văn bản phản hồi dùng cho Text-to-Speech.
+4.4.1. Mục tiêu của Task 3
+Task 3 được thiết kế nhằm thực hiện các mục tiêu sau:
+tiếp nhận intent đã chuẩn hóa từ Task 1 và dữ liệu có cấu trúc từ Task 2;
+chọn lọc các fact phù hợp với đúng loại yêu cầu của người dùng;
+xây dựng mô tả thô theo đúng intent;
+chuyển mô tả thô thành câu trả lời tự nhiên hơn bằng mô hình ngôn ngữ;
+bảo toàn các thông tin quan trọng như khoảng cách, hướng, quan hệ không gian;
+Gọi LLM làm mượt phản hồi với đầu vào là mô tả thô, tạo phản hồi ngắn gọn, dễ nghe và phù hợp để phát bằng giọng nói.
+4.4.2. Vị trí của Task 3 trong toàn hệ thống
+Task 3 là khối cuối cùng ở phía server trước khi kết quả được gửi trả về client. Nó nhận đầu vào từ: api_string và transcript do Task 1 tạo ra; scene_graph, distance_desc, object_brief, hand_info do Task 2 cung cấp.
+Từ các dữ liệu này, Task 3 xây dựng một mô tả thô theo đúng yêu cầu truy vấn, sau đó tinh chỉnh mô tả đó thành câu trả lời cuối cùng. Nói cách khác, Task 3 chính là nơi thực hiện phép ánh xạ: (intent, scene facts) -> raw description -> final answer
+4.4.3. Bước xây dựng mô tả thô theo intent
+Bước đầu tiên của Task 3 là xây dựng raw_description từ các scene facts. Việc này được thực hiện bởi hàm có vai trò trung tâm:
+build_raw_description_from_scene_facts(api_string, scene_graph, distance_desc, object_brief, hand_info)
+Đây là bước quan trọng nhất trong Task 3, vì nó quyết định nội dung nền sẽ được dùng cho mô hình ngôn ngữ ở phía sau. Nó được xây dựng trực tiếp theo intent của Task 1. Điều này làm cho phản hồi cuối phù hợp với truy vấn của người dùng.
+Trường hợp truy vấn cảnh phía trước
+Với intent O_PHIA_TRUOC_CO_GI, người dùng đang yêu cầu hệ thống mô tả tổng quát những gì xuất hiện trước mặt. Trong trường hợp này, Task 3 sử dụng scene_graph làm nền chính để tạo ra mô tả cảnh chung. Đây là dạng mô tả ít phụ thuộc vào target cụ thể, mà nhấn mạnh cấu trúc không gian của toàn cảnh.
+Cách làm này phù hợp vì: câu hỏi mang tính tổng quát; người dùng không nhắm tới một vật riêng lẻ; scene_graph đã đủ để mô tả vật neo, các vật ở bên trái, bên phải, phía sau hoặc phía trên/dưới. Sau đó, mô tả cảnh này sẽ được chuyển sang bước sinh câu trả lời tự nhiên hơn bằng LLM.
+Trường hợp truy vấn theo vùng
+Với các intent như: O_BEN_TRAI_CO_GI, O_BEN_PHAI_CO_GI,…
+Task 3 không còn mô tả toàn cảnh như trường hợp phía trước. Thay vào đó, nó ưu tiên lọc object_brief để lấy ra các vật thể nằm trong vùng không gian mà người dùng đang quan tâm.
+Việc lọc vùng chủ yếu dựa trên: clock_hour, clock_label, distance_m,
+Ví dụ:
+vùng bên trái tương ứng với các object có clock_hour thuộc nhóm 8, 9, 10;
+vùng bên phải tương ứng với nhóm 2, 3, 4;
+vùng phía dưới tương ứng với nhóm 5, 6, 7.
+Sau khi chọn được các vật phù hợp, Task 3 sắp xếp chúng theo khoảng cách từ gần đến xa, rồi xây dựng mô tả thô ưu tiên các vật trong vùng yêu cầu. Nếu vùng đó không có vật rõ ràng, hệ thống có thể dùng mô tả cảnh chung từ scene_graph như một dạng fallback context.
+Trường hợp tìm và lấy vật thể
+Intent TIM_DEN_LAY: <object> là trường hợp phức tạp nhất trong Task 3, vì ở đây hệ thống không chỉ cần mô tả cảnh, mà còn phải tập trung vào một vật thể mục tiêu cụ thể.
+Quy trình xử lý loại intent này gồm các bước chính:
+trích xuất tên vật mục tiêu từ api_string;
+tìm trong object_brief các vật thể phù hợp với target;
+sắp xếp các candidate theo khoảng cách;
+kiểm tra xem người dùng đã chạm vào vật hay chưa;
+xây dựng raw description tập trung vào vật mục tiêu và các quan hệ xung quanh nó.
+Ở đây, object_brief là nguồn dữ liệu quan trọng nhất vì nó giữ đầy đủ: khoảng cách của từng object; hướng đồng hồ; box; quan hệ của object với tay; trạng thái hand_touching.
+Đối sánh vật mục tiêu
+Để tránh phụ thuộc vào đúng một cách gọi tên vật, Task 3 chuẩn hóa tên target bằng cách: bỏ dấu tiếng Việt; bỏ ký tự đặc biệt; chuyển về dạng chữ thường; tách token; so khớp với bảng alias cấu hình sẵn.
+Ví dụ:
+“tivi”, “ti vi”, “tv” có thể được quy về cùng một nhóm;
+“cốc”, “ly” có thể được đối chiếu với cup;
+“máy tính”, “laptop” có thể được gắn với cùng một nhóm nhãn.
+Cách làm này giúp hệ thống linh hoạt hơn khi người dùng gọi vật thể theo nhiều cách khác nhau.
+Ưu tiên hướng dẫn theo tay
+Một trong những đặc điểm đáng chú ý của Task 3 là hỗ trợ chỉ dẫn theo vị trí bàn tay nếu có hand_info hợp lệ. Trong trường hợp TIM_DEN_LAY, nếu Task 2 đã xác định được tham chiếu tay gần camera, Task 3 sẽ ưu tiên mô tả vật thể theo quan hệ với tay thay vì chỉ theo quan hệ với camera.
+Ví dụ, thay vì nói:
+“chai ở hướng 1 giờ, cách bạn 0.85m”
+hệ thống có thể nói:
+“chai ở bên phải mu bàn tay khoảng 14cm”
+Kiểu mô tả này trực quan hơn nhiều đối với tác vụ cầm nắm, vì nó bám sát thao tác tay thực tế của người dùng.
+4.4.4. Bước sinh câu trả lời cuối bằng mô hình ngôn ngữ
+Sau khi xây dựng xong raw_description, Task 3 đưa nội dung này vào mô hình ngôn ngữ để sinh câu trả lời cuối cùng. Ở bước này, hệ thống sử dụng:
+một system prompt tương ứng với từng loại intent;
+một user template chứa đúng ngữ cảnh đã được chọn lọc.
+Việc dùng prompt riêng cho từng loại truy vấn giúp mô hình:
+hiểu rõ kiểu trả lời mong muốn;
+không sinh thêm vật thể không tồn tại;
+giữ câu trả lời ngắn và phù hợp với TTS.
+Ví dụ:
+với truy vấn phía trước, mô hình được yêu cầu tóm tắt cảnh tự nhiên;
+với truy vấn theo vùng, mô hình được yêu cầu ưu tiên vật trong vùng đó;
+với truy vấn lấy vật, mô hình được yêu cầu tập trung vào object target.
+4.4.5. Cơ chế fallback khi LLM không trả kết quả
+Task 3 được thiết kế để không phụ thuộc tuyệt đối vào LLM. Nếu phản hồi từ mô hình ngôn ngữ rỗng hoặc xảy ra lỗi trong quá trình gọi API, hệ thống sẽ fallback về các mô tả thô hoặc các luật phản hồi trực tiếp đã được xây dựng sẵn.
+Điều này đảm bảo:
+hệ thống vẫn trả về kết quả hữu ích;
+không bị “mất tiếng” nếu LLM lỗi;
+giữ được tính ổn định cho trải nghiệm người dùng.
+4.4.6. Đầu ra của Task 3
+Kết quả cuối cùng mà Task 3 sinh ra là một chuỗi văn bản ngắn gọn, phù hợp để đọc bằng giọng nói. Chuỗi này được gói vào phản hồi JSON cùng với trường api và gửi lại cho client.
+Ví dụ:
+{
+"api": "TIM_DEN_LAY: chai nước",
+"text": "Chai nước ở bên phải mu bàn tay khoảng 14cm."
+}
+Client sau đó sử dụng trường text để phát bằng Text-to-Speech.
+Task 3 là tầng diễn giải cuối cùng của server. Nó không quan sát trực tiếp ảnh, cũng không nghe trực tiếp âm thanh, mà hoạt động trên hai lớp thông tin trung gian đã được chuẩn hóa bởi Task 1 và Task 2. Nhờ đó, hệ thống đạt được sự phân tách chức năng rõ ràng:
+4.5. Chi tiết thiết kế các module
+Dự án được tổ chức theo hướng module hóa rõ ràng, trong đó mỗi nhóm tệp đảm nhiệm một vai trò riêng tương ứng với một giai đoạn trong pipeline xử lý tổng thể. Thay vì để toàn bộ logic tập trung vào một vài tệp lớn, hệ thống được chia thành các module theo đúng luồng nghiệp vụ: hiểu lệnh thoại, phân tích cảnh vật và sinh phản hồi. Cách tổ chức này giúp mã nguồn dễ bảo trì, dễ mở rộng và thuận lợi hơn trong quá trình kiểm thử hoặc khoanh vùng lỗi.
+Ở mức tổng quát, kiến trúc mã nguồn bám sát ba tác vụ chính của hệ thống:
+Task 1: xử lý âm thanh và suy ra ý định lệnh.
+Task 2: phân tích hình ảnh và xây dựng dữ liệu không gian có cấu trúc.
+Task 3: kết hợp ý định và dữ liệu cảnh để sinh phản hồi cuối cùng.
+Từ ba tác vụ đó, các module chính của dự án được hình thành như sau:
+Module STT tương ứng với Task 1, chịu trách nhiệm nhận dạng giọng nói và suy luận ý định.
+Module vision tương ứng với Task 2, chịu trách nhiệm phân tích ảnh, ước lượng độ sâu và xây dựng các dữ liệu mô tả cảnh ở mức cấu trúc.
+Module response tương ứng với Task 3, chịu trách nhiệm diễn giải các dữ liệu đầu vào thành phản hồi ngôn ngữ cuối cùng.
+Module service đóng vai trò điều phối toàn bộ pipeline, kết nối ba task và cung cấp API cho client.
+Module prompt chứa các chỉ dẫn ngôn ngữ dùng cho các mô hình AI trong từng giai đoạn xử lý.
+Ngoài các module trên, các tệp như server.py, app_config.py, server_config.json và log_settings.py tạo thành lớp khởi động, cấu hình và vận hành chung của toàn bộ hệ thống.
+4.5.1. Nhóm module của Task 1
+Task 1 được hiện thực chủ yếu bởi module STT. Đây là nhóm thành phần chịu trách nhiệm tiếp nhận dữ liệu âm thanh và biến nó thành một biểu diễn lệnh nội bộ ổn định để các bước sau có thể xử lý được.
+Về bản chất, Task 1 không chỉ dừng ở bài toán nhận dạng tiếng nói. Nó gồm hai lớp chức năng liên tiếp:
+chuyển tín hiệu âm thanh thành transcript tiếng Việt;
+phân loại transcript đó thành một ý định nội bộ đã được chuẩn hóa.
+Điểm quan trọng của Task 1 là chuẩn hóa đầu ra về một tập intent cố định. Người dùng có thể sử dụng nhiều cách diễn đạt khác nhau cho cùng một nhu cầu, nhưng các tầng phía sau không nên phải xử lý toàn bộ biến thể ngôn ngữ đó. Vì vậy, Task 1 đóng vai trò như lớp cầu nối giữa ngôn ngữ tự nhiên của người dùng và logic điều khiển nội bộ của hệ thống.
+Nhóm module này giúp đảm bảo rằng toàn bộ các khối phía sau luôn nhận được đầu vào nhất quán, từ đó làm cho việc phân nhánh xử lý ở mức hệ thống trở nên ổn định và dễ kiểm soát hơn.
+4.5.2. Nhóm module của Task 2
+Task 2 được hiện thực chủ yếu trong module vision. Đây là phần chịu trách nhiệm tiếp nhận ảnh đầu vào và chuyển nó thành các dữ liệu không gian có cấu trúc mà hệ thống có thể suy luận tiếp.
+Khác với một hệ thống nhận diện ảnh thông thường chỉ dừng ở việc phát hiện vật thể, Task 2 trong dự án này đi xa hơn ở chỗ nó cố gắng tổ chức lại thông tin thị giác theo cách có ý nghĩa cho người dùng khiếm thị. Cụ thể, Task 2 không chỉ trả về “ảnh có vật gì”, mà còn cố gắng biểu diễn:
+vật nào là vật chính trong cảnh;
+khoảng cách từ camera đến từng vật;
+quan hệ trái, phải, trên, dưới, trước, sau giữa các vật;
+quan hệ giữa tay người dùng và vật thể nếu có.
+Để đạt mục tiêu đó, module vision thực hiện nhiều tầng xử lý liên tiếp như phát hiện vật thể, suy luận độ sâu, hiệu chuẩn khoảng cách, lọc vật thể quan trọng và xây dựng biểu diễn cảnh ở dạng dữ liệu có cấu trúc. Kết quả đầu ra của Task 2 không còn là câu mô tả hoàn chỉnh, mà là một tập “scene facts” dùng cho bước sinh phản hồi ở Task 3.
+Có thể xem Task 2 là tầng “hiểu không gian”. Nó không sinh ngôn ngữ, nhưng cung cấp toàn bộ cơ sở dữ liệu hình học và quan hệ cảnh để hệ thống trả lời đúng trọng tâm ở bước sau.
+4.5.3. Nhóm module của Task 3
+Task 3 được hiện thực chủ yếu trong module response. Đây là khối cuối cùng ở phía server, chịu trách nhiệm chuyển các dữ liệu đã được phân tích thành câu trả lời hoàn chỉnh cho người dùng.
+Task 3 tiếp nhận hai loại đầu vào:
+ý định lệnh từ Task 1;
+dữ liệu cảnh có cấu trúc từ Task 2.
+Từ đó, nó quyết định chiến lược diễn giải nào là phù hợp với từng loại câu hỏi. Ví dụ:
+nếu người dùng hỏi về cảnh phía trước, hệ thống sẽ thiên về mô tả tổng quát;
+nếu người dùng hỏi về một vùng cụ thể như bên trái hoặc phía dưới, hệ thống sẽ ưu tiên các vật trong vùng đó;
+nếu người dùng muốn tìm và lấy một vật cụ thể, hệ thống sẽ tập trung vào vật mục tiêu, khoảng cách tới vật và các mốc liên quan xung quanh vật đó.
+Một đặc điểm quan trọng trong thiết kế của Task 3 là nó không giao toàn bộ quyền quyết định cho mô hình ngôn ngữ. Trước khi gọi mô hình, hệ thống đã chuẩn bị sẵn ngữ cảnh theo đúng hướng cần thiết. Sau khi mô hình trả kết quả, hệ thống tiếp tục thực hiện bước hậu xử lý để làm sạch, chuẩn hóa và loại bỏ những biểu diễn kỹ thuật không phù hợp với đầu ra cuối. Nhờ đó, phản hồi của hệ thống không bị phụ thuộc hoàn toàn vào tính bất định của mô hình bên ngoài.
+Nói cách khác, Task 3 là tầng “diễn giải và diễn đạt”. Nó chịu trách nhiệm biến dữ liệu nội bộ thành thông tin có thể nghe, có thể hiểu và có thể hành động đối với người dùng.
+4.5.4. Nhóm module điều phối hệ thống
+Bên cạnh ba nhóm module tương ứng với ba task chính, dự án còn có nhóm module điều phối, chủ yếu nằm trong thư mục service. Nhóm này chịu trách nhiệm:
+tiếp nhận request từ client;
+lưu dữ liệu tạm;
+gọi Task 1 và Task 2 song song;
+gom kết quả để chuyển sang Task 3;
+trả response cuối cùng về cho client;
+quản lý vòng đời vận hành của server.
+Nếu STT, vision và response là các module xử lý theo từng miền chuyên môn, thì service là lớp orchestration kết nối toàn bộ pipeline thành một hệ thống hoạt động thống nhất.
+Nhóm này đặc biệt quan trọng vì nó đảm bảo luồng dữ liệu giữa các task diễn ra đúng thứ tự và đúng giao diện, đồng thời là nơi duy trì sự tách biệt giữa logic nghiệp vụ và giao tiếp mạng.
+4.5.5. Nhóm module prompt và cấu hình
+Module prompt là một module nhỏ nhưng có ảnh hưởng đáng kể đến chất lượng đầu ra của hệ thống. Nó chứa các chỉ dẫn ngôn ngữ dành cho mô hình AI ở các giai đoạn khác nhau, chẳng hạn như:
+phân loại ý định từ transcript trong Task 1;
+sinh phản hồi ngôn ngữ trong Task 3.
+Việc tách prompt thành một module độc lập giúp duy trì ranh giới rõ ràng giữa:
+logic xử lý dữ liệu;
+logic điều khiển hành vi ngôn ngữ của mô hình.
+Điều này rất quan trọng vì trong các hệ thống tích hợp AI, chất lượng đầu ra không chỉ phụ thuộc vào dữ liệu, mà còn phụ thuộc mạnh vào cách mô hình được hướng dẫn.
+Bên cạnh đó, các tệp cấu hình như app_config.py, server_config.json và log_settings.py cung cấp lớp quản lý tham số vận hành chung cho toàn hệ thống. Chúng giúp hệ thống có thể thay đổi model, ngưỡng xử lý, chế độ logging hoặc thông số calibration mà không cần sửa trực tiếp mã nguồn nghiệp vụ.
+4.5.6. Kết luận về cách tổ chức module
+Cách tổ chức module của dự án phản ánh rõ triết lý thiết kế theo pipeline và theo trách nhiệm. Mỗi module lớn tương ứng với một giai đoạn nhận thức riêng:
+hiểu lệnh nói;
+hiểu cảnh quan;
+sinh phản hồi.
+Nhờ vậy, hệ thống có cấu trúc rõ ràng hơn, dễ đọc hơn và dễ phát triển tiếp trong tương lai. Khi cần nâng cấp một phần cụ thể, chẳng hạn thay mô hình STT, cải tiến thuật toán xây dựng cảnh hay thay đổi chiến lược sinh phản hồi, nhóm phát triển có thể tập trung vào đúng module tương ứng mà không làm ảnh hưởng quá lớn đến toàn bộ hệ thống.
+CHƯƠNG 5. CÀI ĐẶT, TRIỂN KHAI VÀ KIỂM THỬ
+5.1. Môi trường phát triển
+Hệ thống được phát triển dưới dạng backend FastAPI cho một trợ lý tiếng Việt hỗ trợ người mù bằng âm thanh và thị giác máy tính. Môi trường phát triển yêu cầu một máy tính có khả năng chạy Python, có thể cài các thư viện xử lý thị giác, âm thanh và suy luận mô hình học sâu. Bên cạnh đó, máy phát triển cần có quyền truy cập file hệ thống để đọc ảnh, ghi file tạm và nạp các mô hình phục vụ phân tích ảnh.
+Ở mức phần mềm, dự án phụ thuộc vào nhiều nhóm thư viện khác nhau.
+Nhóm thứ nhất là thư viện phục vụ web backend và giao tiếp API, giúp server tiếp nhận request và trả kết quả.
+Nhóm thứ hai là thư viện cấu hình và kết nối dịch vụ bên ngoài, cho phép hệ thống gọi mô hình nhận dạng giọng nói và mô hình sinh phản hồi.
+Nhóm thứ ba là thư viện âm thanh dùng cho ghi âm, cắt khoảng lặng và chuẩn hóa dữ liệu tiếng nói trong các tình huống kiểm thử cục bộ.
+Nhóm thứ tư là thư viện thị giác máy tính và học sâu, dùng để phát hiện vật thể, suy luận độ sâu và hiệu chỉnh khoảng cách. Ngoài ra còn có một số thư viện hỗ trợ xử lý ảnh, số học và trực quan hóa phụ trợ.
+Bên cạnh đó, môi trường phát triển còn có sự phụ thuộc vào các dịch vụ ngoài thông qua khóa API.
+Nhánh chuyển giọng nói thành văn bản và phân loại ý định cần truy cập đến dịch vụ tương thích OpenAI của Groq.
+Nhánh sinh phản hồi cuối cần truy cập đến dịch vụ DeepSeek qua giao diện OpenAI-compatible.
+Điều này có nghĩa là trong điều kiện phát triển thông thường, máy chạy cần có kết nối mạng ổn định và các khóa xác thực hợp lệ. Nếu không có mạng hoặc thiếu khóa truy cập, hệ thống chỉ có thể kiểm tra từng phần cục bộ mà không thể tái hiện đầy đủ luồng đầu cuối.
+5.2. Hướng dẫn cài đặt
+Danh sách phụ thuộc đã được tập trung trong tệp requirements nên người triển khai chỉ cần cài đặt theo đúng tệp này để bảo đảm đủ các thành phần cho backend, âm thanh, thị giác máy tính và mô hình học sâu.
+Khi cài đặt xong, nên kiểm tra lại xem các thư viện nặng như torch, mediapipe, ultralytics, onnxruntime hay OpenCV đã được cài đúng hay chưa, vì đây là các thành phần dễ phát sinh lỗi tương thích môi trường.
+Sau khi thư viện và mô hình đã sẵn sàng, hệ thống có thể được khởi động như một server API. Khi chạy server, người triển khai cần chú ý rằng các mô hình thị giác sẽ được nạp ngay trong giai đoạn khởi động ứng dụng. Vì vậy, thời gian startup có thể không ngắn như các API web thông thường. Đây là hành vi mong đợi, bởi hệ thống cần bảo đảm các mô hình đã sẵn sàng trước khi nhận request thực tế.
+5.3. Kiểm thử và xác nhận hoạt động
+Nhắc lại luồng hoạt động đơn giản:
+Client gửi và server nhận:
+API /process nhận đúng 2 upload audio và image.
+Khi có cả hai kết quả, server chọn raw description phù hợp với intent rồi gọi LLM để làm câu trả lời tự nhiên hơn.
+Response trả về cho client là JSON dạng:
+{
+"api": "...",
+"text": "..."
+}
+Client phát âm thanh từ phần văn bản mô tả bằng bộ chuyển văn bản thành giọng nói (TTS).
+Hình 6: Kết quả truy vấn phía trước (mẫu 1)
+API: O_PHIA_TRUOC_CO_GI
+OUTPUT: Trước mặt có một cái ghế, cách bạn khoảng 0.8 mét. Phía sau ghế có chuột máy tính, ấm đun nước điện, máy tính xách tay và khăn tắm.
+Hình 7: Kết quả truy vấn phía trước (mẫu 2)
+API: O_PHIA_TRUOC_CO_GI
+OUTPUT: Trước mặt bạn có cái chén cách 0.6 mét. Phía sau chén 22 xen-ti-mét là củ cà rốt và một cái chén khác. Gần cái chén thứ hai 13 xen-ti-mét là bàn ăn.
+Hình 8: Kết quả truy vấn tìm cái chén
+API: TIM_DEN_LAY: cái chén
+OUTPUT: Cái chén ở hướng 6 giờ, cách bạn 2 mét 47. Phía trước cái chén có cái ghế cách khoảng 0.7 mét.
+5.4. Hướng phát triển thêm
+Hệ thống hiện tại đã hình thành được một pipeline tương đối rõ cho bài toán nghe, nhìn và phản hồi, tuy nhiên vẫn còn nhiều hướng phát triển đáng giá để nâng chất lượng ứng dụng lên gần hơn với nhu cầu sử dụng thật.
+Hướng đầu tiên là mở rộng độ phong phú của tập ý định. Hiện nay hệ thống tập trung chủ yếu vào mô tả cảnh phía trước và tìm đến lấy vật. Trong tương lai có thể bổ sung các nghiệp vụ khác như cảnh báo vật cản, nhận diện vùng nguy hiểm, hỗ trợ tìm lối đi trong phòng hoặc xác định đồ vật theo nhóm chức năng.
+Hướng phát triển thứ hai là giảm phụ thuộc vào tay tham chiếu trong nhánh thị giác. Hiện tại đây là một cơ chế hiệu chuẩn hữu ích nhưng cũng là điểm yếu của hệ thống, vì nếu ảnh không có tay hoặc tay không được phát hiện ổn định thì khả năng suy luận khoảng cách sẽ giảm mạnh. Trong các phiên bản sau, có thể nghiên cứu thêm các chiến lược hiệu chuẩn thay thế hoặc cơ chế ước lượng khoảng cách ít phụ thuộc hơn vào mốc tay duy nhất.
+Hướng phát triển thứ ba là nâng chất lượng phản hồi cuối theo hướng cá nhân hóa hơn. Không phải người dùng nào cũng cần cùng một độ dài câu trả lời hay cùng một kiểu diễn đạt. Có người cần phản hồi cực ngắn, chỉ gồm vị trí và khoảng cách. Có người lại cần thêm mốc tham chiếu xung quanh để dễ hình dung. Vì vậy, hệ thống có thể được mở rộng để điều chỉnh phong cách trả lời theo hồ sơ sử dụng hoặc theo chế độ trợ năng mà người dùng chọn.
+Cuối cùng, hệ thống có thể được mở rộng về mặt triển khai bằng cách đóng gói môi trường chạy ổn định hơn, hỗ trợ dễ dàng hơn cho nhiều thiết bị và nhiều nền tảng. Khi bài toán chuyển từ giai đoạn nghiên cứu sang giai đoạn ứng dụng rộng hơn, tính nhất quán môi trường và sự dễ dàng trong triển khai sẽ trở thành yếu tố quan trọng không kém chính thuật toán.
+5.5. Khó khăn khi sử dụng ứng dụng
+Khó khăn đầu tiên khi sử dụng ứng dụng nằm ở chất lượng dữ liệu đầu vào. Với nhánh âm thanh, nếu môi trường quá ồn, người dùng nói nhỏ, nói quá ngắn hoặc phát âm không rõ, hệ thống có thể gặp khó khăn trong việc tạo transcript chính xác và phân loại ý định đúng. Với nhánh hình ảnh, nếu ảnh mờ, rung, thiếu sáng hoặc bố cục quá chật, nhánh thị giác sẽ giảm khả năng phát hiện vật cũng như suy luận khoảng cách một cách tin cậy.
+Khó khăn thứ hai là sự phụ thuộc vào điều kiện sử dụng tương đối đặc thù. Hiện tại nhánh Vision của hệ thống dựa khá nhiều vào việc ảnh có bàn tay làm mốc tham chiếu. Điều này tạo ra một ràng buộc trong trải nghiệm: người dùng hoặc người hỗ trợ cần giữ được tư thế chụp phù hợp để hệ thống nhìn thấy tay, nếu không kết quả có thể không đủ tốt. Đây là một hạn chế dễ gặp trong sử dụng hàng ngày, khi người dùng không phải lúc nào cũng ở trong điều kiện chụp chuẩn.
+Khó khăn thứ ba là sự phụ thuộc vào dịch vụ ngoài. Vì hai nhánh ngôn ngữ chính đang gọi đến các mô hình qua API, độ ổn định của hệ thống không chỉ phụ thuộc vào code nội bộ mà còn phụ thuộc vào kết nối mạng và trạng thái dịch vụ bên ngoài. Trong môi trường mạng yếu, phản hồi có thể đến chậm hoặc không đến. Từ góc nhìn người dùng, điều này làm trải nghiệm mất tính tức thời và đôi khi gây khó phân biệt giữa lỗi ứng dụng với lỗi hạ tầng mạng.
+Khó khăn cuối cùng là tính nhất quán của phản hồi trong các bối cảnh thực tế đa dạng. Trong môi trường đơn giản, ít vật và ánh sáng tốt, hệ thống có thể hoạt động khá rõ ràng. Tuy nhiên trong phòng có nhiều vật thể giống nhau, nhiều đồ nhỏ, nhiều chồng lấn hoặc góc chụp không ổn định, phản hồi có thể trở nên khó theo dõi hơn. Điều này cho thấy ứng dụng hiện vẫn đang ở trạng thái cần tiếp tục tinh chỉnh để thích nghi tốt hơn với đa dạng tình huống sống thật.
+Mặc dù còn những khó khăn nêu trên, việc nhận diện rõ các hạn chế này lại là cơ sở rất quan trọng cho giai đoạn cải tiến tiếp theo. Một hệ thống trợ năng hữu ích không chỉ cần hoạt động được trong điều kiện lý tưởng, mà còn cần được thiết kế để chịu được điều kiện sử dụng không hoàn hảo. Vì vậy, các khó khăn khi sử dụng không nên được xem là điểm yếu đơn thuần, mà nên được xem như nguồn thông tin đầu vào cho chiến lược phát triển tiếp theo của dự án.
+TÀI LIỆU THAM KHẢO
+[1] Richard Hartley, Andrew Zisserman, Multiple View Geometry in Computer Vision, 2nd edition, Cambridge University Press, 2004.
+[2] Richard Szeliski, Computer Vision: Algorithms and Applications, 2nd edition, Springer, 2022.
+[3] OpenCV Documentation, Camera Calibration and 3D Reconstruction, https://docs.opencv.org/4.x/d9/d0c/group__calib3d.html
+[4] Joseph Redmon, Santosh Divvala, Ross Girshick, Ali Farhadi, “You Only Look Once: Unified, Real-Time Object Detection”, IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
+[5] Lihe Yang, Bingyi Kang, Zilong Huang, Xiaogang Xu, Jiashi Feng, Hengshuang Zhao, “Depth Anything: Unleashing the Power of Large-Scale Unlabeled Data”, IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2024.
+[6] Lihe Yang, Bingyi Kang, Zilong Huang, Zilong Zhao, Xiaogang Xu, Jiashi Feng, Hengshuang Zhao, “Depth Anything V2”, arXiv, 2024.
+[7] Alec Radford, Jong Wook Kim, Tao Xu, Greg Brockman, Christine McLeavey, Ilya Sutskever, “Robust Speech Recognition via Large-Scale Weak Supervision”, arXiv, 2022.
+[8] Fan Zhang, Valentin Bazarevsky, Andrey Vakunov, Andrii Tkachenka, Guan Pang, Cheng-Lin Chang, Matthias Grundmann, “MediaPipe Hands: On-Device Real-Time Hand Tracking”, arXiv, 2020.

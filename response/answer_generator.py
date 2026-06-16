@@ -12,6 +12,7 @@ from prompt.prompts import (
     RESPONSE_REGION_QUERY_SYSTEM_PROMPT,
     RESPONSE_TIM_DEN_LAY_SYSTEM_PROMPT,
 )
+from vision.scene_builder import generate_description
 
 
 def init_client(api_key: str, base_url: str):
@@ -587,28 +588,50 @@ def _build_rule_context_for_region(
     return "\n".join(lines)
 
 
-def select_raw_description_for_api(
+def _build_general_scene_description_from_scene_facts(scene_graph: dict | None) -> str:
+    if not scene_graph:
+        return "Không phát hiện được vật thể hợp lệ để mô tả."
+
+    description = generate_description(scene_graph)
+    if int(scene_graph.get("object_count", 0) or 0) == 1:
+        return f"{description} Không thấy vật nào khác xung quanh."
+    return description
+
+
+def build_raw_description_from_scene_facts(
     api_string: str,
+    scene_graph: dict | None,
     distance_description: str,
-    raw_description: str,
     object_brief: list[dict] | None = None,
+    hand_info: dict | None = None,
 ) -> str:
-    """Choose the raw description shape that matches the classified API intent."""
+    """Build an intent-specific raw description from Task 1 + Task 2 structured facts."""
+    del hand_info
+    general_scene_description = _build_general_scene_description_from_scene_facts(scene_graph)
     api_upper = (api_string or "").upper()
     if _is_region_query_intent(api_string):
-        return _build_rule_context_for_region(api_string, distance_description, raw_description, object_brief)
+        return _build_rule_context_for_region(
+            api_string,
+            distance_description,
+            general_scene_description,
+            object_brief,
+        )
     if not api_upper.startswith("TIM_DEN_LAY"):
-        return _translate_yolo_labels(raw_description)
+        return _translate_yolo_labels(general_scene_description)
 
     target_object = api_string.split(":", 1)[1].strip() if ":" in (api_string or "") else ""
     if not target_object:
-        return _translate_yolo_labels(raw_description)
+        return _translate_yolo_labels(general_scene_description)
+
+    touch_answer = _direct_touch_answer(object_brief, target_object)
+    if touch_answer:
+        return touch_answer
 
     return _build_rule_context_for_target(
         api_string,
         target_object,
         distance_description,
-        raw_description,
+        general_scene_description,
         object_brief,
     )
 
@@ -746,10 +769,21 @@ def _preserve_target_relations(answer: str, raw_description: str) -> str:
     return " ".join([output.strip(), *missing_sentences]).strip()
 
 
+def _extract_target_distance_from_raw(raw_description: str) -> str:
+    for line in (raw_description or "").splitlines():
+        line = line.strip()
+        if not line.startswith("Mục tiêu"):
+            continue
+        _, _, detail = line.partition(":")
+        detail = detail.strip()
+        if detail:
+            return detail
+    return "Xem chi tiết trong mô tả ngữ cảnh."
+
+
 def _fallback_answer(
     api_string: str,
     target_object: str,
-    distance_description: str,
     raw_description: str,
 ) -> str:
     api_upper = (api_string or "").upper()
@@ -763,21 +797,8 @@ def _fallback_answer(
                 _, _, first_line_text = first_line.partition(":")
                 if first_line_text.strip():
                     return _finalize_answer(first_line_text.strip(), target_object)
-        target_distance = _extract_target_distance(distance_description, target_object)
-        if target_distance.startswith("Không có"):
-            return f"Chưa xác định được vị trí của {target_object}."
-        first_match = target_distance.split(";", 1)[0].strip()
-        info_text = first_match.split(":", 1)[1].strip() if ":" in first_match else ""
-        distance, clock_text = _split_distance_clock(info_text)
-        if distance and clock_text:
-            return _finalize_answer(
-                f"Cái {target_object} ở {clock_text}, cách bạn {distance}.",
-                target_object,
-            )
-        if distance:
-            return _finalize_answer(f"Cái {target_object} cách bạn {distance}.", target_object)
-        if clock_text:
-            return _finalize_answer(f"Cái {target_object} ở {clock_text}.", target_object)
+        if raw_description:
+            return _finalize_answer(raw_description, target_object)
         return f"Chưa xác định được vị trí của {target_object}."
 
     return _finalize_answer(raw_description, target_object)
@@ -787,9 +808,7 @@ def answer_from_api(
     client,
     api_string: str,
     transcript: str,
-    distance_description: str,
     raw_description: str,
-    object_brief: list[dict] | None,
     model: str,
     max_tokens: int,
     temperature: float,
@@ -816,25 +835,12 @@ def answer_from_api(
         system_prompt = RESPONSE_O_PHIA_TRUOC_CO_GI_SYSTEM_PROMPT
 
     if target_object:
-        touch_answer = _direct_touch_answer(object_brief, target_object)
-        if touch_answer:
-            return touch_answer
-        target_distance_text = _extract_target_distance(distance_description or "", target_object)
-        if _looks_like_target_context(raw_description):
-            target_context_text = raw_description
-        else:
-            target_context_text = _build_rule_context_for_target(
-                api_string,
-                target_object,
-                distance_description,
-                raw_description,
-                object_brief,
-            )
+        target_distance_text = _extract_target_distance_from_raw(raw_description)
         user_prompt = API_TIM_DEN_LAY_USER_TEMPLATE.format(
             api_string=api_string,
             target_object=target_object,
             target_distance_description=target_distance_text,
-            raw_description=target_context_text,
+            raw_description=raw_description,
         )
     elif _is_region_query_intent(api_string):
         region_config = _region_query_config(api_string)
@@ -885,6 +891,6 @@ def answer_from_api(
             f"content_chars={len(content)} | reasoning_chars={len(reasoning)}"
         )
     if not content:
-        return _fallback_answer(api_string, target_object, distance_description, raw_description)
+        return _fallback_answer(api_string, target_object, raw_description)
     content = _preserve_target_relations(content, raw_description) if target_object else content
     return _finalize_answer(content, target_object)

@@ -21,7 +21,7 @@ from vision.hand_calibrator import (
 from vision.label_translation import translate_label
 from vision.object_detector import compute_object_size_cm
 from vision.object_size_filter import filter_object_data_by_size
-from vision.scene_builder import build_dll, build_scene_json, filter_objects, generate_description
+from vision.scene_builder import build_dll, build_scene_json, filter_objects
 
 logger = logging.getLogger("voice_server.vision")
 
@@ -579,7 +579,7 @@ def analyze_image_with_calibration(
         logger.warning("Task2 image read failed | image=%s", image_path)
         _finalize_task2_timings(timings, total_start)
         return {
-            "scene_description": "Không đọc được ảnh.",
+            "scene_graph": None,
             "distance_desc": "",
             "object_brief": [],
             "calibration_description": "Không đọc được ảnh.",
@@ -783,7 +783,7 @@ def analyze_image_with_calibration(
         timings["distance_desc_ms"] = 0.0
         _finalize_task2_timings(timings, total_start)
         return {
-            "scene_description": "Không phát hiện được vật thể hợp lệ để mô tả.",
+            "scene_graph": None,
             "distance_desc": "",
             "object_brief": object_brief,
             "calibration_description": depth_result["calibration_description"],
@@ -797,37 +797,16 @@ def analyze_image_with_calibration(
         save_vision_debug_image(image_path, orig, debug_objects, (h, w))
         timings["debug_image_ms"] = (time.perf_counter() - debug_start) * 1000.0
 
-    if len(valid_objects) == 1:
-        timings["scene_ms"] = 0.0
-        distance_start = time.perf_counter()
-        distance_desc = build_distance_description(valid_objects)
-        timings["distance_desc_ms"] = (time.perf_counter() - distance_start) * 1000.0
-        only_obj = valid_objects[0]
-        _finalize_task2_timings(timings, total_start)
-        return {
-            "scene_description": (
-                f"Trước mặt là cái {only_obj['label']}, cách {only_obj['Z']:.1f}m. "
-                "Không thấy vật nào khác xung quanh."
-            ),
-            "distance_desc": distance_desc,
-            "object_brief": object_brief,
-            "calibration_description": depth_result["calibration_description"],
-            "calibration_info": depth_result["calibration_info"],
-            "hand_info": hand_info,
-            "timings": timings,
-        }
-
     scene_start = time.perf_counter()
     dll_head = build_dll(valid_objects)
     scene_json = build_scene_json(dll_head)
-    description = generate_description(scene_json)
     timings["scene_ms"] = (time.perf_counter() - scene_start) * 1000.0
     distance_start = time.perf_counter()
     distance_desc = build_distance_description(valid_objects)
     timings["distance_desc_ms"] = (time.perf_counter() - distance_start) * 1000.0
     _finalize_task2_timings(timings, total_start)
     return {
-        "scene_description": description,
+        "scene_graph": scene_json,
         "distance_desc": distance_desc,
         "object_brief": object_brief,
         "calibration_description": depth_result["calibration_description"],
@@ -966,4 +945,4 @@ def describe_image_with_calibration(
         focal_length_px=focal_length_px,
         depth_scale=depth_scale,
     )
-    return bundle["scene_description"], bundle["timings"], bundle["distance_desc"]
+    return bundle["scene_graph"], bundle["timings"], bundle["distance_desc"]

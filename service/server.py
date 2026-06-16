@@ -22,8 +22,8 @@ from service.vision_pipeline import (
 )
 from response.answer_generator import (
     answer_from_api,
+    build_raw_description_from_scene_facts,
     init_client as init_response_client,
-    select_raw_description_for_api,
 )
 from response.config import tts_config as tcfg
 from STT.command_processor import process_voice_command_api
@@ -236,14 +236,18 @@ async def process_audio(
             llm_ms = api_steps.get("llm_s", 0.0) * 1000.0
 
         if api_string == "THIET_LAP_CAU_HINH":
-            description = vision_result["calibration_description"]
+            scene_graph = None
+            calibration_description = vision_result["calibration_description"]
             distance_desc = ""
             object_brief = []
+            hand_info = None
             calibration_info = vision_result["calibration_info"]
         else:
-            description = vision_result["scene_description"]
+            scene_graph = vision_result.get("scene_graph")
+            calibration_description = ""
             distance_desc = vision_result["distance_desc"]
             object_brief = vision_result.get("object_brief", [])
+            hand_info = vision_result.get("hand_info")
             calibration_info = None
         timings = vision_result["timings"]
 
@@ -258,7 +262,7 @@ async def process_audio(
             )
 
             logger.info(
-                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f debug_image=%.1f scene=%.1f distance_desc=%.1f | detector(ms): yolo=%.1f(batch=%.0f,images=%.0f,tiles=%.0f,infer=%.1f,post=%.1f,gap=%.1f) yolo_world=%.1f(batch=%.0f,images=%.0f,tiles=%.0f,infer=%.1f,post=%.1f,gap=%.1f) depth=%.1f(depth=%.1f,hand=%.1f,focal=%.1f,depth_calib=%.1f,gap=%.1f) merges(final=%.1f) | raw=%s",
+                "Task2 Vision | wall=%.1f ms | internal=%.1f ms | accounted=%.1f ms | unaccounted=%.1f ms | steps(ms): load+resize=%.1f detector_total=%.1f yolo_primary=%.1f yolo_world=%.1f hand=%.1f focal=%.1f depth=%.1f calib+obj=%.1f filter=%.1f debug_image=%.1f scene=%.1f distance_desc=%.1f | detector(ms): yolo=%.1f(batch=%.0f,images=%.0f,tiles=%.0f,infer=%.1f,post=%.1f,gap=%.1f) yolo_world=%.1f(batch=%.0f,images=%.0f,tiles=%.0f,infer=%.1f,post=%.1f,gap=%.1f) depth=%.1f(depth=%.1f,hand=%.1f,focal=%.1f,depth_calib=%.1f,gap=%.1f) merges(final=%.1f) | scene_graph=%s",
                 vision_latency,
                 timings.get("total_ms", 0.0),
                 timings.get("accounted_ms", 0.0),
@@ -296,7 +300,7 @@ async def process_audio(
                 timings.get("depth_calib_ms", 0.0),
                 timings.get("depth_lane_gap_ms", 0.0),
                 timings.get("detector_merge_ms", 0.0),
-                description,
+                scene_graph,
             )
             logger.info(
                 "Task1+Vision wall=%.1f ms",
@@ -335,17 +339,21 @@ async def process_audio(
             logger.info("Distance matrix (camera -> objects): %s", distance_desc)
             if calibration_info is not None:
                 logger.info("Camera calibration state: %s", calibration_info)
-        selected_description = select_raw_description_for_api(
-            api_string,
-            distance_desc,
-            description,
-            object_brief,
-        )
-        if selected_description != description and is_enabled("request_summary", True):
+        if api_string == "THIET_LAP_CAU_HINH":
+            raw_description = calibration_description
+        else:
+            raw_description = build_raw_description_from_scene_facts(
+                api_string,
+                scene_graph,
+                distance_desc,
+                object_brief,
+                hand_info,
+            )
+        if is_enabled("request_summary", True):
             logger.info(
                 "Selected raw description for api=%s | raw=%s",
                 api_string,
-                selected_description,
+                raw_description,
             )
 
         response_latency = 0.0
@@ -355,9 +363,7 @@ async def process_audio(
                 get_response_client(),
                 api_string,
                 transcript,
-                distance_desc,
-                selected_description,
-                object_brief,
+                raw_description,
                 model=tcfg.LLM_MODEL,
                 max_tokens=tcfg.MAX_TOKENS,
                 temperature=tcfg.TEMPERATURE,
@@ -368,7 +374,7 @@ async def process_audio(
             response_latency = (time.perf_counter() - response_start) * 1000.0
         except Exception as exc:
             logger.warning("LLM answer failed: %s", exc)
-            smooth_text = selected_description
+            smooth_text = raw_description
 
         response = {"api": api_string, "text": smooth_text}
         if calibration_info is not None:

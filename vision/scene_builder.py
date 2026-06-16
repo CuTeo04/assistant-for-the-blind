@@ -296,6 +296,7 @@ def build_scene_json(dll_head: SceneNode):
         return None
 
     name_map = _build_display_name_map(dll)
+    object_count = len(name_map)
 
     def name(n: SceneNode) -> str:
         return name_map.get(_node_id(n), n.label)
@@ -311,6 +312,7 @@ def build_scene_json(dll_head: SceneNode):
     scene_json = {
         "neo": name(neo),
         "neo_depth": float(neo.Z),
+        "object_count": int(object_count),
         "chuoi_ngang": [],
         "tren_duoi": [],
         "phia_sau": [],

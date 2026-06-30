@@ -39,21 +39,11 @@ def _x_overlap(a: SceneNode, b: SceneNode) -> bool:
     return not (a.x2 < b.x1 or b.x2 < a.x1)
 
 
-def _dist_ngang(a: SceneNode, b: SceneNode) -> float:
-    a_min = float(min(a.X_left, a.X_right))
-    a_max = float(max(a.X_left, a.X_right))
-    b_min = float(min(b.X_left, b.X_right))
-    b_max = float(max(b.X_left, b.X_right))
-
-    if a_max < b_min:
-        dX = b_min - a_max
-    elif b_max < a_min:
-        dX = a_min - b_max
-    else:
-        dX = 0.0
-
+def _dist_3d(a: SceneNode, b: SceneNode) -> float:
+    dX = float(b.X - a.X)
+    dY = float(b.Y - a.Y)
     dZ = float(b.Z - a.Z)
-    return float(math.sqrt(dX * dX + dZ * dZ))
+    return float(math.sqrt(dX * dX + dY * dY + dZ * dZ))
 
 
 def _horiz_dir(ref: SceneNode, other: SceneNode) -> str:
@@ -218,7 +208,7 @@ def build_dll(objects: list[dict]):
         right = dll_nodes[i]
         left.next = right
         right.prev = left
-        left.dist_to_next = _dist_ngang(left, right)
+        left.dist_to_next = _dist_3d(left, right)
 
     head = dll_nodes[0]
     while head.prev is not None:
@@ -367,7 +357,7 @@ def build_scene_json(dll_head: SceneNode):
     for node in dll:
         node_name = name(node)
 
-        for behind_node in sorted(node.behind, key=lambda b: float(_dist_ngang(node, b))):
+        for behind_node in sorted(node.behind, key=lambda b: float(_dist_3d(node, b))):
             behind_name = name(behind_node)
             if behind_name in described_targets:
                 continue
@@ -378,7 +368,7 @@ def build_scene_json(dll_head: SceneNode):
                     {
                         "vat": behind_name,
                         "sau": node_name,
-                        "dist": float(_dist_ngang(node, behind_node)),
+                        "dist": float(_dist_3d(node, behind_node)),
                     }
                 )
                 described_targets.add(behind_name)

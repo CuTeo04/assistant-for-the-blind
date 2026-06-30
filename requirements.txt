@@ -21,4 +21,4 @@ huggingface_hub==0.34.4
 git+https://github.com/ultralytics/CLIP.git
 
 python-dotenv
-onnxruntime==1.18.1
+onnxruntime-directml==1.18.1
